@@ -44,6 +44,9 @@ $ npm run start:dev
 # production mode
 $ npm run start:prod
 ```
+## Swagger link
+
+> http://localhost:3030/docs
 
 ## Run tests
 
