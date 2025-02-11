@@ -1,16 +1,13 @@
-// trabajadores.service.ts
+// export.service.ts
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
-import { firstValueFrom } from 'rxjs';
 import axios from 'axios';
 import * as ExcelJS from 'exceljs';
-import { createReadStream, existsSync, mkdirSync, rmSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
 
 @Injectable()
 export class ExportService {
   constructor(
-    private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -21,9 +18,9 @@ export class ExportService {
   async getTrabajadores(baseUri: string): Promise<any[]> {
     try {
       const { data } = await axios.get(`${baseUri}/trabVillar`);
-      console.log(data);
       return data.Trabajadores || [];
     } catch (error) {
+      console.error('Error en getTrabajadores:', error);
       throw new Error('Error al obtener datos de trabajadores');
     }
   }
@@ -33,19 +30,17 @@ export class ExportService {
       const baseUri = this.getBaseUri();
       const trabajadores = await this.getTrabajadores(baseUri);
 
-      
       if (!existsSync('temp')) mkdirSync('temp');
-      const date = new Date();
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Trabajadores');
 
       // Definir columnas con anchos personalizados
       worksheet.columns = [
-        { header: 'Nombre y Apellidos', key: 'nombreCompleto', width: 30 },
+        { header: 'Nombre y Apellidos', key: 'nombreCompleto', width: 40 },
         { header: 'UEB', key: 'ueb', width: 20 },
-        { header: 'Unidad', key: 'unidad', width: 20 },
-        { header: 'Área', key: 'area', width: 20 },
-        { header: 'Cargo', key: 'cargo', width: 20 },
+        { header: 'Unidad', key: 'unidad', width: 35 },
+        { header: 'Área', key: 'area', width: 40 },
+        { header: 'Cargo', key: 'cargo', width: 40 },
         { header: 'Grupo Escala', key: 'grupoEscala', width: 20 },
         { header: 'Nivel Escolar Cargo', key: 'nivelEscolarCargo', width: 20 },
         { header: 'Expediente Laboral', key: 'expedienteLaboral', width: 20 },
@@ -72,10 +67,10 @@ export class ExportService {
         { header: 'Color de Piel', key: 'colorPiel', width: 20 },
         { header: 'Estud', key: 'estud', width: 20 },
         { header: 'Comp', key: 'comp', width: 20 },
-        { header: 'Graduado de', key: 'graduadoDe', width: 20 },
+        { header: 'Graduado de', key: 'graduadoDe', width: 30 },
         { header: 'No Resolución', key: 'noResolucion', width: 20 },
         { header: 'Master-Doct', key: 'masterDoct', width: 20 },
-        { header: 'Dirección', key: 'direccion', width: 30 },
+        { header: 'Dirección', key: 'direccion', width: 50 },
         { header: 'Nombres', key: 'nombres', width: 20 },
         { header: 'Apellido 1', key: 'apellido1', width: 20 },
         { header: 'Apellido 2', key: 'apellido2', width: 20 },
@@ -106,48 +101,67 @@ export class ExportService {
         };
       });
 
+      // Función auxiliar para campos booleanos
+      const formatBoolean = (value) => {
+        const strVal = value?.toString().trim() || '';
+        if (strVal === '1') return 'Sí';
+        if (strVal === '0') return 'No';
+        return '-'; // Para valores vacíos o no reconocidos
+      };
+
+      // Función auxiliar para manejar campos vacíos y valores 0
+      const formatValue = (value) => {
+        if (value === 0 || value === '0') {
+          return '0'; // Mantener los 0 como texto
+        }
+        if ((!value && value !== 0) || value.toString().trim() == '') {
+          return '-'; // Reemplazar campos vacíos o nulos por '-'
+        }
+        return value.toString().trim();
+      };
+
       // Agregar datos de trabajadores
       trabajadores.forEach((trabajador) => {
         const row = worksheet.addRow({
-          nombreCompleto: trabajador.nombreCompleto,
-          ueb: trabajador.ueb,
-          unidad: trabajador.unidad,
-          area: trabajador.area,
-          cargo: trabajador.cargo,
-          grupoEscala: trabajador.grupoEscala,
-          nivelEscolarCargo: trabajador.nivelEscolarCargo,
-          expedienteLaboral: trabajador.expedienteLaboral,
-          categoriaOcupacional: trabajador.categoriaOcupacional,
-          salario: trabajador.salario,
-          codigoMarcaje: trabajador.codigoMarcaje,
-          edad: trabajador.edad,
-          sexo: trabajador.sexo,
-          nivelEscolar: trabajador.nivelEscolar,
-          noIdentidad: trabajador.noIdentidad,
-          pcc: trabajador.pcc,
-          ujc: trabajador.ujc,
-          camMinOtr: trabajador.camMinOtr,
-          cumpleReq: trabajador.cumpleReq,
-          simultCobDif: trabajador.simultCobDif,
-          jubiladoCont: trabajador.jubiladoCont,
-          tieneAuto: trabajador.tieneAuto,
-          imprescindible: trabajador.imprescindible,
-          trbUbicDefensa: trabajador.trbUbicDefensa,
-          colorPiel: trabajador.colorPiel,
-          estud: trabajador.estud,
-          comp: trabajador.comp,
-          graduadoDe: trabajador.graduadoDe,
-          noResolucion: trabajador.noResolucion,
-          masterDoct: trabajador.masterDoct,
-          direccion: trabajador.direccion,
-          nombres: trabajador.nombres,
-          apellido1: trabajador.apellido1,
-          apellido2: trabajador.apellido2,
-          desigFunc: trabajador.desigFunc,
-          especialidad: trabajador.especialidad,
-          tallaCamisa: trabajador.tallaCamisa,
-          tallaPantalon: trabajador.tallaPantalon,
-          tallaZapato: trabajador.tallaZapato,
+          nombreCompleto: formatValue(trabajador.Nombre),
+          ueb: formatValue(trabajador.UEB),
+          unidad: formatValue(trabajador.Unidad),
+          area: formatValue(trabajador.Area),
+          cargo: formatValue(trabajador.Cargo),
+          grupoEscala: formatValue(trabajador['Grp Escala']),
+          nivelEscolarCargo: formatValue(trabajador.NivEsc_Cargo),
+          expedienteLaboral: formatValue(trabajador.Exp_Lab),
+          categoriaOcupacional: formatValue(trabajador.CatOcup),
+          salario: formatValue(trabajador.Salario),
+          codigoMarcaje: formatValue(trabajador['Código Tarjeta Marcaje']),
+          edad: formatValue(trabajador.edad),
+          sexo: formatValue(trabajador.Sexo),
+          nivelEscolar: formatValue(trabajador.NivelEscolar),
+          noIdentidad: formatValue(trabajador.No_Identidad),
+          pcc: formatBoolean(trabajador.PCC),
+          ujc: formatBoolean(trabajador.UJC),
+          camMinOtr: formatValue(trabajador['1CAM-2MIN-3Otr']),
+          cumpleReq: formatValue(trabajador.CumpleReq),
+          simultCobDif: formatValue(trabajador['1Simult-2CobDif']),
+          jubiladoCont: formatBoolean(trabajador.JubiladoCont),
+          tieneAuto: formatBoolean(trabajador.Aut),
+          imprescindible: formatBoolean(trabajador.Imprescindible),
+          trbUbicDefensa: formatValue(trabajador.Defensa),
+          colorPiel: formatValue(trabajador.ColorPiel),
+          estud: formatBoolean(trabajador.Estud),
+          comp: formatBoolean(trabajador.Comp),
+          graduadoDe: formatValue(trabajador['Graduado_de(Carrera)']),
+          noResolucion: formatValue(trabajador.NoResolucion),
+          masterDoct: formatValue(trabajador.Master_Doct),
+          direccion: formatValue(trabajador['Dirección Oficial']),
+          nombres: formatValue(trabajador.Nombres),
+          apellido1: formatValue(trabajador['1erApellido']),
+          apellido2: formatValue(trabajador['2doApellido']),
+          desigFunc: formatValue(trabajador.Desig_Func),
+          especialidad: formatValue(trabajador.Especialidad),
+          tallaCamisa: formatValue(trabajador['Talla_Camisa']),
+          tallaPantalon: formatValue(trabajador['Talla_Pantalon']),
+          tallaZapato: formatValue(trabajador['Talla_Zapato']),
         });
 
         row.eachCell({ includeEmpty: true }, (cell) => {
@@ -172,22 +186,14 @@ export class ExportService {
       // Auto filtro
       worksheet.autoFilter = {
         from: 'A1',
-        to: `${worksheet.columnCount}${worksheet.rowCount}`,
+        to: `AM${worksheet.rowCount}`, //En caso de añadirse o eliminarse columnas, modificar el valor 'AM'
       };
 
-      // Generar buffer en memoria
-      const objName = `temp/${trabajadores}-${date.getTime()}.xlsx`;
-      await workbook.xlsx.writeFile(objName);
+      const buffer = await workbook.xlsx.writeBuffer();
 
-      if (!objName) throw new Error('File not created');
-
-      const readStream = createReadStream(objName);
-      readStream.on('end', () => {
-        rmSync(objName);
-      });
-      return readStream;
+      return buffer;
     } catch (error) {
-      throw new InternalServerErrorException('Error al generar el reporte');
+      throw new InternalServerErrorException(error);
     }
   }
 }

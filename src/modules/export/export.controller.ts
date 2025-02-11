@@ -1,7 +1,17 @@
-import { Controller, Get, Post, Body, Param, Res, Header, StreamableFile  } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Header,
+  StreamableFile,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { ExportService } from './export.service';
 import { ApiTags } from '@nestjs/swagger';
-import { Response } from 'express';
+import { Readable } from 'stream';
 
 @ApiTags('export')
 @Controller('export')
@@ -14,12 +24,22 @@ export class ExportController {
   )
   @Header(
     'Content-Disposition',
-    `attachment; filename=trabajadores(${new Date().toISOString().split('T')[0]}).xlsx`
+    `attachment; filename=trabajadores(${new Date().toISOString().split('T')[0]}).xlsx`,
   )
   @Get('reports/excel/all-workers')
   async exportAll() {
-    const buffer = await this.exportService.generateAllWorkersExcel();
-    return new StreamableFile(buffer);
+    try {
+      const buffer = await this.exportService.generateAllWorkersExcel();
+      const readableStream = new Readable();
+      readableStream.push(buffer);
+      readableStream.push(null); // Indica el final del stream
+      return new StreamableFile(readableStream);
+    } catch (error) {
+      console.error('Error en exportAll:', error.message);
+      throw new HttpException(
+        'Error al generar el reporte: ' + error.message,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
-
 }
