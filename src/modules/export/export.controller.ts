@@ -35,10 +35,33 @@ export class ExportController {
       readableStream.push(null); // Indica el final del stream
       return new StreamableFile(readableStream);
     } catch (error) {
-      console.error('Error en exportAll:', error.message);
       throw new HttpException(
         'Error al generar el reporte: ' + error.message,
         HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Header(
+    'Content-Type',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  )
+  @Header(
+    'Content-Disposition',
+    `attachment; filename=modelo14B(${new Date().getMonth() + 1}-${new Date().getFullYear()}).xlsx`
+  )
+  @Get('reports/excel/modelo14b')
+  async exportModel14B() {
+    try {
+      const buffer = await this.exportService.exportModel14B();
+      const stream = new Readable();
+      stream.push(buffer);
+      stream.push(null);
+      return new StreamableFile(stream);
+    } catch (error) {
+      throw new HttpException(
+        'Error al generar el reporte: ' + error.message,
+        HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
