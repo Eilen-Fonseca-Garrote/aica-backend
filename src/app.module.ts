@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { PersonalModule } from './modules/personal/personal.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import * as mysql2 from 'mysql2';
@@ -22,8 +21,6 @@ import { ExportModule } from './modules/export/export.module';
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
-        // entities: [join(__dirname, '**', '*.entity{.js,.ts}')],
-        // entities: [Client, Marketer, Contract, Order, Plan],
         synchronize: configService.get<boolean>('SYNCHRO'),
         autoLoadEntities: false,
         extra: { connectionLimit: 10 },
@@ -33,7 +30,6 @@ import { ExportModule } from './modules/export/export.module';
       
   }), */
     ExportModule,
-    PersonalModule,
   ],
   
 })
