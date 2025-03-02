@@ -8,16 +8,25 @@ import {
   DireccionModelo14B,
   UEBModelo14B,
 } from '../../common/types/model14b.types';
+import { AusentismoData } from '../../common/types/absenteeism.types';
+import { ExportUtilities } from './export.utility';
 
 @Injectable()
 export class ExportService {
-  constructor(private readonly configService: ConfigService) {}
-
-  getBaseUri(): string {
-    return this.configService.get<string>('SIGERH_BASE_PATH') as string;
+  private baseUri: string;
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly utils: ExportUtilities,
+  ) {
+    this.getBaseUri();
   }
 
-  async getWorkers(baseUri: string): Promise<any[]> {
+  private getBaseUri() {
+    this.baseUri = this.configService.get<string>('SIGERH_BASE_PATH') as string;
+    this.utils.setBaseUri(this.baseUri);
+  }
+
+  private async getWorkers(baseUri: string): Promise<any[]> {
     try {
       const { data } = await axios.get(`${baseUri}/trabVillar`);
       return data.Trabajadores || [];
@@ -27,10 +36,9 @@ export class ExportService {
     }
   }
 
-  async generateAllWorkersExcel() {
+  public async generateAllWorkersExcel() {
     try {
-      const baseUri = this.getBaseUri();
-      const trabajadores = await this.getWorkers(baseUri);
+      const trabajadores = await this.getWorkers(this.baseUri);
 
       if (!existsSync('temp')) mkdirSync('temp');
       const workbook = new ExcelJS.Workbook();
@@ -199,12 +207,11 @@ export class ExportService {
     }
   }
 
-  async exportModel14B() {
+  public async exportModel14B() {
     try {
-      const baseUri = this.getBaseUri();
-      const client = axios.create({ baseURL: baseUri });
+      const client = axios.create({ baseURL: this.baseUri });
 
-      const model14B_apart = await this.processModelo14B(client);
+      const model14B_apart = await this.processModel14B(client);
       const buffer = await this.generateModel14BExcel(model14B_apart);
 
       return buffer;
@@ -213,33 +220,33 @@ export class ExportService {
     }
   }
 
-  private async processModelo14B(client: any): Promise<UEBModelo14B[]> {
+  private async processModel14B(client: any): Promise<UEBModelo14B[]> {
     const uebs = ['16', '100', '25', '55', '57'];
     const result: UEBModelo14B[] = [];
 
     for (const ueb of uebs) {
       try {
-        const uebName = await this.getUEBByCode(ueb);
+        const uebName = await this.utils.getUEBByCode(ueb);
         const UEBModelo14B: UEBModelo14B = { ueb: uebName, direcciones: [] };
 
         const [direcciones, modelo14B] = await Promise.all([
           client.get(`/recursosHumanos/direccionesUEB?ueb=${ueb}`),
           client.get(`/recursosHumanos/modelo14B?ueb=${ueb}`),
-        ]);  //original
+        ]); //original
 
-        const direccionesData: DireccionModelo14B[] = direcciones.data 
-          .map((dir: any) => ({
+        const direccionesData: DireccionModelo14B[] = direcciones.data.map(
+          (dir: any) => ({
             Unidad: dir.Unidad.trim(),
             Area: dir.Area.map((area: any) => ({
               Area: area.Area.trim(),
-              trabs: modelo14B.data
-                .filter(
-                  (trab: any) =>
-                    dir.Unidad.trim() === trab.EstDesc.trim() &&
-                    area.Area.trim() === trab.Expr1.trim(),
-                ),
+              trabs: modelo14B.data.filter(
+                (trab: any) =>
+                  dir.Unidad.trim() === trab.EstDesc.trim() &&
+                  area.Area.trim() === trab.Expr1.trim(),
+              ),
             })),
-          }));
+          }),
+        );
 
         UEBModelo14B.direcciones = direccionesData;
         result.push(UEBModelo14B);
@@ -416,7 +423,6 @@ export class ExportService {
       .getRow(6)
       .eachCell((cell) => Object.assign(cell, mainHeaderStyle));
 
-
     // Auto filtro
     worksheet.autoFilter = {
       from: 'A6',
@@ -486,11 +492,434 @@ export class ExportService {
     });
   }
 
-  private async getUEBByCode(code: string): Promise<string> {
-    if (code == '16') return 'AICA';
-    else if (code == '55') return 'Julio Trigo';
-    else if (code == '25') return 'Liorad';
-    else if (code == '57') return 'SH+';
-    else return 'CITOX';
+  public async generateAusentismoExcel(
+    mes: string,
+    year: number,
+    noLabDays: number,
+  ) {
+    try {
+      this.getBaseUri();
+      // Calcular datos de ausentismo
+      const ausentismoData = await this.calcularAusentismoMensual(
+        mes,
+        year,
+        noLabDays,
+      );
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Ausentismo');
+
+      // Configuración inicial de la hoja
+      this.setupWorksheetStructure(worksheet, mes, year);
+
+      // Agregar datos
+      this.addMainContent(worksheet, ausentismoData);
+
+      // Generar buffer
+      return workbook.xlsx.writeBuffer();
+    } catch (error) {
+      throw new Error(`Error generando Excel: ${error.message}`);
+    }
+  }
+
+  private async calcularAusentismoMensual(
+    mes: string,
+    year: number,
+    diasNoLaborales: number,
+  ): Promise<AusentismoData> {
+    let ausentismoAnt = 0;
+    let ausentAcumAnterior = 0;
+    const porcientoAnterior = await this.utils.getPorcientoPeriodoAnterior(
+      mes,
+      year,
+    );
+
+    if (porcientoAnterior.length > 0) {
+      ausentismoAnt = porcientoAnterior[0].porciento;
+      ausentAcumAnterior = porcientoAnterior[0].porciento_acumulado;
+    } else {
+      const result = await this.calcularAusentismoEspecifico(
+        mes,
+        year - 1,
+        diasNoLaborales,
+        ausentismoAnt,
+        ausentAcumAnterior,
+      );
+
+      ausentismoAnt = parseFloat(
+        ((result.FTNU[0] / result.FTMU[0]) * 100).toFixed(2),
+      );
+      ausentAcumAnterior = parseFloat(
+        ((result.FTNU[1] / result.FTMU[1]) * 100).toFixed(2),
+      );
+
+      await this.utils.insertarPorcentajeAusentismo(
+        mes,
+        year - 1,
+        ausentismoAnt,
+        ausentAcumAnterior,
+      );
+    }
+
+    const result = await this.calcularAusentismoEspecifico(
+      mes,
+      year,
+      diasNoLaborales,
+      ausentismoAnt,
+      ausentAcumAnterior,
+    );
+
+    const ausentismoActual = parseFloat(
+      ((result.FTNU[0] / result.FTMU[0]) * 100).toFixed(2),
+    );
+    const ausentAcumActual = parseFloat(
+      ((result.FTNU[1] / result.FTMU[1]) * 100).toFixed(2),
+    );
+
+    await this.utils.insertarPorcentajeAusentismo(
+      mes,
+      year,
+      ausentismoActual,
+      ausentAcumActual,
+    );
+
+    // Resultado final
+    return result;
+  }
+
+  private async calcularAusentismoEspecifico(
+    mes: string,
+    year: number,
+    diasNoLaborales: number,
+    ausentismoAnt: number,
+    ausentAcumAnterior: number,
+  ) {
+    const diasMes = new Date(year, Number.parseInt(mes), 0).getDate();
+
+    // Obtener datos base
+    const clavesAusentismo = await this.utils.clavesAusentismo(mes, year);
+    const fisicos = await this.utils.fisicosMes(mes, year);
+
+    // 1. Fondo de Tiempo Calendario (FTC)
+    const ftcReal = diasMes * fisicos;
+    const ftcAcumulado =
+      ftcReal + (await this.utils.conceptosAcumulados('FTC', mes, year));
+    const ftc = [ftcReal, ftcAcumulado];
+    await this.utils.insertarConceptosAcumulados(
+      'FTC',
+      'Fondo de Tiempo Calendario',
+      mes,
+      year,
+      ftcAcumulado,
+    );
+
+    // 2. Tiempo no Laborable (TNL)
+    const hombresDiasVacaciones =
+      await this.utils.hombresDiasVacaciones(clavesAusentismo);
+    // aquí se estaban contando los días laborables del mes (diasMes - diasNoLaborales)
+    // el cálculo solo debe incluir (diasNoLaborales) para que sea correcto
+    const tnlReal = diasNoLaborales * fisicos + hombresDiasVacaciones;
+    const tnlAcumulado =
+      tnlReal + (await this.utils.conceptosAcumulados('TNL', mes, year));
+    await this.utils.insertarConceptosAcumulados(
+      'TNL',
+      'Tiempo no Laborable',
+      mes,
+      year,
+      tnlAcumulado,
+    );
+    const tnl = [tnlReal, tnlAcumulado];
+
+    // 3. Fondo de Tiempo Máximo Utilizable (FTMU)
+    const ftmuReal = ftcReal - tnlReal;
+    const ftmuAcumulado = ftcAcumulado - tnlAcumulado;
+    const ftmu = [ftmuReal, ftmuAcumulado];
+
+    // 4. Enfermedad
+    const enfermedadReal = await this.utils.causasAusentismo(clavesAusentismo, [
+      '09',
+      '13',
+    ]);
+    const enfermedadAcumulado =
+      enfermedadReal + (await this.utils.conceptosAcumulados('E', mes, year));
+    const enfermedad = [enfermedadReal, enfermedadAcumulado];
+    await this.utils.insertarConceptosAcumulados(
+      'E',
+      'Enfermedad',
+      mes,
+      year,
+      enfermedadAcumulado,
+    );
+
+    // 5. Asuntos Propios
+    const asuntosPropiosReal = await this.utils.causasAusentismo(
+      clavesAusentismo,
+      ['19', '20', '17'],
+    );
+    const asuntosPropiosAcumulado =
+      asuntosPropiosReal +
+      (await this.utils.conceptosAcumulados('AP', mes, year));
+    const asuntosPropios = [asuntosPropiosReal, asuntosPropiosAcumulado];
+    await this.utils.insertarConceptosAcumulados(
+      'AP',
+      'Asuntos Propios',
+      mes,
+      year,
+      asuntosPropiosAcumulado,
+    );
+
+    // 6. Accidente Trabajo
+    const accidenteTrabajoReal = await this.utils.causasAusentismo(
+      clavesAusentismo,
+      ['07', '11'],
+    );
+    const accidenteTrabajoAcumulado =
+      accidenteTrabajoReal +
+      (await this.utils.conceptosAcumulados('AT', mes, year));
+    const accidenteTrabajo = [accidenteTrabajoReal, accidenteTrabajoAcumulado];
+    await this.utils.insertarConceptosAcumulados(
+      'AT',
+      'Accidente de Trabajo',
+      mes,
+      year,
+      accidenteTrabajoAcumulado,
+    );
+
+    // 7. Accidente Equiparado
+    const accidenteEquiparadoReal = await this.utils.causasAusentismo(
+      clavesAusentismo,
+      ['08', '12'],
+    );
+    const accidenteEquiparadoAcumulado =
+      accidenteEquiparadoReal +
+      (await this.utils.conceptosAcumulados('AE', mes, year));
+    const accidenteEquiparado = [
+      accidenteEquiparadoReal,
+      accidenteEquiparadoAcumulado,
+    ];
+    await this.utils.insertarConceptosAcumulados(
+      'AE',
+      'Accidente Equiparado',
+      mes,
+      year,
+      accidenteEquiparadoAcumulado,
+    );
+
+    // 8. Ausencias Injustificadas
+    const ausenciasInjustificadasReal = await this.utils.causasAusentismo(
+      clavesAusentismo,
+      ['16'],
+    );
+    const ausenciasInjustificadasAcumulado =
+      ausenciasInjustificadasReal +
+      (await this.utils.conceptosAcumulados('AI', mes, year));
+    const ausenciasInjustificadas = [
+      ausenciasInjustificadasReal,
+      ausenciasInjustificadasAcumulado,
+    ];
+    await this.utils.insertarConceptosAcumulados(
+      'AI',
+      'Ausencias Injustificadas',
+      mes,
+      year,
+      ausenciasInjustificadasAcumulado,
+    );
+
+    // 9. Fondo de Tiempo no Utilizado (FTNU)
+    const ftnuReal =
+      enfermedadReal +
+      asuntosPropiosReal +
+      accidenteTrabajoReal +
+      ausenciasInjustificadasReal +
+      accidenteEquiparadoReal;
+    const ftnuAcumulado =
+      enfermedadAcumulado +
+      asuntosPropiosAcumulado +
+      accidenteTrabajoAcumulado +
+      accidenteEquiparadoAcumulado +
+      ausenciasInjustificadasAcumulado;
+    const ftnu = [ftnuReal, ftnuAcumulado];
+
+    // 10. Fondo de Tiempo Utilizable (FTU)
+    //Aquí se sumaba en lugar de restar (en los ejemplos manuales se resta)
+    const ftuReal = ftmuReal - ftnuReal;
+    const ftuAcumulado = ftmuAcumulado - ftnuAcumulado;
+    const ftu = [ftuReal, ftuAcumulado];
+
+    // 11. Porcentaje del Año Anterior
+    const porcientoLastYear = [ausentismoAnt, ausentAcumAnterior];
+
+    // 12. Promedios de la Tabla
+    const promediosTabla = await this.utils.obtenerPromediosAusentismo(
+      mes,
+      year,
+    );
+
+    const result: AusentismoData = {
+      FTC: ftc,
+      TNL: tnl,
+      FTMU: ftmu,
+      FTU: ftu,
+      FTNU: ftnu,
+      Enfermedad: enfermedad,
+      AsuntosPropios: asuntosPropios,
+      AccidenteTrabajo: accidenteTrabajo,
+      AccidenteEquiparado: accidenteEquiparado,
+      AusenciasInjustificadas: ausenciasInjustificadas,
+      PromedioTabla: promediosTabla,
+      PromedioAnterior: porcientoLastYear,
+    };
+
+    // Resultado final
+    return result;
+  }
+
+  private setupWorksheetStructure(
+    worksheet: ExcelJS.Worksheet,
+    mes: string,
+    year: number,
+  ) {
+    // Configurar anchos de columnas
+    worksheet.columns = [
+      { key: 'concepto', width: 45 },
+      { key: 'real', width: 15 },
+      { key: 'acumulado', width: 15 },
+      { key: 'fila', width: 12 },
+      { key: 'porc_mes', width: 15 },
+      { key: 'porc_acumulado', width: 20 },
+    ];
+
+    // Estilos comunes
+    const headerStyle = {
+      fill: {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF0000FF' },
+      },
+      font: {
+        color: { argb: 'FFFFFFFF' },
+        bold: true,
+      },
+      alignment: { vertical: 'middle', horizontal: 'center' },
+    };
+
+    // Cabecera principal
+    worksheet.mergeCells('A1:F1');
+    worksheet.getCell('A1').value = 'MODELO RL4';
+    worksheet.getRow(1).eachCell((cell) => Object.assign(cell, headerStyle));
+
+    worksheet.mergeCells('A3:F3');
+    worksheet.getCell('A3').value = 'Empresa: LABORATORIOS AICA';
+    worksheet.getCell('A3').style = { font: { bold: true } };
+
+    worksheet.mergeCells('A4:F4');
+    worksheet.getCell('A4').value = 'GRUPO EMPRESARIAL BIOCUBAFARMA';
+    worksheet.getCell('A4').style = { font: { bold: true } };
+
+    // Fecha y mes
+    worksheet.mergeCells('A5:B5');
+    worksheet.getCell('A5').value = `MES QUE SE INFORMA: ${mes}`;
+    worksheet.getCell('C5').value = `AÑO: ${year}`;
+    worksheet.getCell('A5').style = { font: { bold: true } };
+    worksheet.getCell('C5').style = { font: { bold: true } };
+  }
+
+  private addMainContent(worksheet: ExcelJS.Worksheet, data: AusentismoData) {
+    let rowIndex = 7;
+
+    // Sección Ausentismo
+    worksheet.mergeCells(`A${rowIndex}:F${rowIndex}`);
+    worksheet.getCell(`A${rowIndex}`).value = 'AUSENTISMO';
+    worksheet.getCell(`A${rowIndex}`).style = {
+      fill: {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF0000FF' },
+      },
+      font: { color: { argb: 'FFFFFFFF' }, bold: true },
+      alignment: { vertical: 'middle', horizontal: 'center' },
+    };
+    rowIndex += 2;
+
+    // Cabeceras de la tabla
+    worksheet.getCell(`A${rowIndex}`).value = 'CONCEPTOS';
+    worksheet.getCell(`B${rowIndex}`).value = 'REAL DEL MES';
+    worksheet.getCell(`C${rowIndex}`).value = 'ACUMULADO';
+    worksheet.getCell(`D${rowIndex}`).value = 'FILA NO';
+    rowIndex++;
+
+    // Función auxiliar para añadir filas
+    const addRow = (concepto: string, valores: number[], fila: number) => {
+      worksheet.getCell(`A${rowIndex}`).value = concepto;
+      worksheet.getCell(`B${rowIndex}`).value = valores[0];
+      worksheet.getCell(`C${rowIndex}`).value = valores[1];
+      worksheet.getCell(`D${rowIndex}`).value = fila;
+
+      // Calcular porcentajes si aplica
+      if (fila > 5) {
+        const porcentajeMes =
+          ((valores[0] / data.FTMU[0]) * 100).toFixed(2) + '%';
+        const porcentajeAcum =
+          ((valores[1] / data.FTMU[1]) * 100).toFixed(2) + '%';
+
+        worksheet.getCell(`E${rowIndex}`).value = porcentajeMes;
+        worksheet.getCell(`F${rowIndex}`).value = porcentajeAcum;
+      }
+
+      rowIndex++;
+    };
+
+    // Añadir datos principales
+    addRow('FONDO DE TIEMPO CALENDARIO', data.FTC, 1);
+    addRow('Menos: TIEMPO NO LABORABLE', data.TNL, 2);
+    addRow('FONDO DE TIEMPO MÁXIMO UTILIZABLE', data.FTMU, 3);
+    addRow('FONDO DE TIEMPO UTILIZABLE', data.FTU, 4);
+    addRow('FONDO DE TIEMPO NO UTILIZADO', data.FTNU, 5);
+    addRow('*Enfermedad', data.Enfermedad, 6);
+    addRow('Más * Asuntos Propios', data.AsuntosPropios, 7);
+    addRow('Más * Accidente de Trabajo', data.AccidenteTrabajo, 8);
+    addRow('Más * Accidente Equiparado', data.AccidenteEquiparado, 9);
+    addRow('Más * Ausencias Injustificadas', data.AusenciasInjustificadas, 10);
+
+    const mainStyle = {
+      border: {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' },
+      },
+      alignment: { vertical: 'middle', wrapText: true },
+    };
+
+    rowIndex -= 11;
+    for (let i = rowIndex; i < rowIndex + 11; i++) {
+      worksheet.getRow(i).eachCell((cell) => Object.assign(cell, mainStyle));
+    }
+    rowIndex += 12;
+
+    // Añadir fórmulas finales
+    const porcentajeMes =
+      ((data.FTNU[0] / data.FTMU[0]) * 100).toFixed(2) + '%';
+    const porcentajeAcum =
+      ((data.FTNU[1] / data.FTMU[1]) * 100).toFixed(2) + '%';
+
+    worksheet.mergeCells(`A${rowIndex}:D${rowIndex}`);
+    worksheet.getCell(`A${rowIndex}`).value =
+      '% AUSENTISMO DEL MES = FONDO DE TIEMPO NO UTILIZADO / FONDO DE TIEMPO MAXIMO UTILIZADO * 100';
+    rowIndex++;
+
+    worksheet.getCell(`A${rowIndex}`).value = '% AUSENTISMO DEL MES';
+    worksheet.getCell(`B${rowIndex}`).value = porcentajeMes;
+    rowIndex++;
+    worksheet.getCell(`A${rowIndex}`).value = '% AUSENTISMO DEL MES ACUMULADO';
+    worksheet.getCell(`B${rowIndex}`).value = porcentajeAcum;
+    rowIndex += 2;
+
+    // Añadir datos de año anterior
+    worksheet.getCell(`A${rowIndex}`).value =
+      `% AUS. IGUAL PERIODO AÑO ANTERIOR (Mes): ${data.PromedioAnterior[0]}`;
+    worksheet.getCell(`C${rowIndex}`).value =
+      `% AUS. IGUAL PERIODO AÑO ANTERIOR (Acumulado): ${data.PromedioAnterior[1]}`;
+    rowIndex += 2;
   }
 }
