@@ -8,10 +8,13 @@ import {
   StreamableFile,
   HttpException,
   HttpStatus,
+  Query,
+  Res,
 } from '@nestjs/common';
 import { ExportService } from './export.service';
 import { ApiTags } from '@nestjs/swagger';
 import { Readable } from 'stream';
+import { Response } from 'express';
 
 @ApiTags('export')
 @Controller('export')
@@ -44,13 +47,13 @@ export class ExportController {
 
   @Header(
     'Content-Type',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   )
   @Header(
     'Content-Disposition',
-    `attachment; filename=modelo14B(${new Date().getMonth() + 1}-${new Date().getFullYear()}).xlsx`
+    `attachment; filename=modelo14B(${new Date().getMonth() + 1}-${new Date().getFullYear()}).xlsx`,
   )
-  @Get('reports/excel/modelo14b')
+  @Get('reports/excel/model14b')
   async exportModel14B() {
     try {
       const buffer = await this.exportService.exportModel14B();
@@ -61,7 +64,41 @@ export class ExportController {
     } catch (error) {
       throw new HttpException(
         'Error al generar el reporte: ' + error.message,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  
+  @Get('reports/excel/ausentismo')
+  async exportModelAusentismo(
+    @Query('noLabDays') noLabDays: string,
+    @Query('fechaAusentismo') fechaAusentismo: string,
+    @Res({ passthrough: true }) res: Response, // Inyectar el objeto Response
+  ) {
+    try {
+      const [mes, year] = fechaAusentismo.split('-');
+      const buffer = await this.exportService.generateAusentismoExcel(
+        mes,
+        parseInt(year),
+        parseInt(noLabDays),
+      );
+
+      // Configurar los headers usando el objeto Response
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename=modeloRL4(${mes}-${year}).xlsx`,
+    });
+
+      const stream = new Readable();
+      stream.push(buffer);
+      stream.push(null);
+
+      return new StreamableFile(stream);
+    } catch (error) {
+      throw new HttpException(
+        'Error al generar el reporte: ' + error.message,
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }

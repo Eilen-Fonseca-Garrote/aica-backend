@@ -12,7 +12,7 @@ import { ExportModule } from './modules/export/export.module';
       validationSchema: envSchema,
       envFilePath: '.env.dev',
     }),
-    /* TypeOrmModule.forRootAsync({
+    TypeOrmModule.forRootAsync({
       useFactory: async (configService: ConfigService) => ({
         type: 'mysql',
         driver: mysql2,
@@ -28,7 +28,7 @@ import { ExportModule } from './modules/export/export.module';
       }),
       inject: [ConfigService],
       
-  }), */
+  }),
     ExportModule,
   ],
   
