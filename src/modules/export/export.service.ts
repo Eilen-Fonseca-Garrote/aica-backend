@@ -522,7 +522,7 @@ export class ExportService {
     }
   }
 
-  private async calcularAusentismoMensual(
+  public async calcularAusentismoMensual(
     mes: string,
     year: number,
     diasNoLaborales: number,
@@ -531,7 +531,7 @@ export class ExportService {
     let ausentAcumAnterior = 0;
     const porcientoAnterior = await this.utils.getPorcientoPeriodoAnterior(
       mes,
-      year,
+      year-1,
     );
 
     if (porcientoAnterior.length > 0) {
@@ -587,7 +587,7 @@ export class ExportService {
     return result;
   }
 
-  private async calcularAusentismoEspecifico(
+  public async calcularAusentismoEspecifico(
     mes: string,
     year: number,
     diasNoLaborales: number,
@@ -766,7 +766,7 @@ export class ExportService {
       AccidenteTrabajo: accidenteTrabajo,
       AccidenteEquiparado: accidenteEquiparado,
       AusenciasInjustificadas: ausenciasInjustificadas,
-      PromedioTabla: promediosTabla,
+      PromedioTabla: promediosTabla, //Campo que no se utiliza en la versión actual del modelo
       PromedioAnterior: porcientoLastYear,
     };
 

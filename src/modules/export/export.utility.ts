@@ -25,11 +25,14 @@ export class ExportUtilities {
 
   constructor(private readonly entityManager: EntityManager) {}
 
+
+  //Esta función es puramente informativa, para comprobar los resultados de los enpoints
+  //Sus llamadas en los métodos deberían estar comentadas si llegan a producción para ahorrar recursos
   private mockFunction(resultados: any, name: string) {
     // Guardar mock (descomentar para generar JSON)
     const fs = require('fs');
     const path = require('path');
-    const mockDir = 'src/data/modelorl4';
+    const mockDir = 'src/data/modelorl4'; //modificar la ruta para su función específica
     const mockPath = path.join(mockDir, name);
     fs.writeFileSync(mockPath, JSON.stringify(resultados, null, 2));
   }
@@ -91,7 +94,7 @@ export class ExportUtilities {
 
       const resultados = await this.entityManager.query(query, parameters);
 
-      this.mockFunction(resultados, `porciento-ausentismo-${anno}-${mes}.json`);
+      //this.mockFunction(resultados, `porciento-ausentismo-${anno}-${mes}.json`);
 
       return resultados;
     } catch (error) {
@@ -114,10 +117,10 @@ export class ExportUtilities {
           };
 
           const { data } = await axios.get(url, { params });
-          this.mockFunction(
+          /* this.mockFunction(
             data,
             `totalClavesDescuentan-${year}-${mes}-${ueb.codigo}.json`,
-          );
+          ); */
           result.push(data);
         } catch (error) {
           console.error(
@@ -167,7 +170,7 @@ export class ExportUtilities {
       'SELECT * FROM promedio WHERE clave = ?',
       [id],
     );
-    this.mockFunction(rows, `PromedioByClaveId-${id}.json`);
+    //this.mockFunction(rows, `PromedioByClaveId-${id}.json`);
     return rows;
   }
 
@@ -257,7 +260,7 @@ export class ExportUtilities {
             params: { ueb: codigo, mes: mes, anno },
           },
         );
-        this.mockFunction(response.data, `bajaTrab-${ueb}-${anno}-${mes}.json`);
+        //this.mockFunction(response.data, `bajaTrab-${ueb}-${anno}-${mes}.json`);
         clave26Param = response.data;
       }
 
@@ -269,10 +272,10 @@ export class ExportUtilities {
           params: { ueb: codigo, direccion, mes, anno },
         },
       );
-      this.mockFunction(
+      /* this.mockFunction(
         response.data,
         `promTrabajadores-${codigo}-${mes}-${anno}-${direccion}.json`,
-      );
+      ); */
       promedio_general[ueb].promedio = response.data;
 
       total = this.addTotalPromedioMensual(
@@ -385,10 +388,10 @@ export class ExportUtilities {
       const params = [concepto, mesFormateado, year];
 
       const resultados = await this.entityManager.query(query, params);
-      this.mockFunction(
+      /* this.mockFunction(
         resultados,
         `valor-concepto_mensual-${concepto}-${year}-${mes}.json`,
-      );
+      ); */
 
       // Si no hay resultados, retornar 0
       if (!resultados || resultados.length === 0) {
@@ -417,15 +420,15 @@ export class ExportUtilities {
   ): Promise<string> {
     try {
       const query = `
-        SELECT * FROM conceptos_mensuales WHERE concepto = ? AND mes = ?
+        SELECT * FROM conceptos_mensuales WHERE concepto = ? AND mes = ? AND anno = ?
       `;
 
-      const parameters = [concepto, mes];
+      const parameters = [concepto, mes, anno];
       const result = await this.entityManager.query(query, parameters);
-      this.mockFunction(
+      /* this.mockFunction(
         result,
         `concepto_mensual-${concepto}-${anno}-${mes}.json`,
-      );
+      ); */
 
       if (result.length === 0) {
         const insertQuery = `
@@ -511,7 +514,7 @@ export class ExportUtilities {
           params: { anno, mes, ueb },
         },
       );
-      this.mockFunction(data, `cantidadAltas-${anno}-${mes}-${ueb}.json`);
+      //this.mockFunction(data, `cantidadAltas-${anno}-${mes}-${ueb}.json`);
       return data[0]?.altas || 0;
     } catch (error) {
       console.error(`Error altas UEB ${ueb}:`, error.message);
@@ -531,7 +534,7 @@ export class ExportUtilities {
           params: { anno, mes, ueb },
         },
       );
-      this.mockFunction(data, `cantidadBajas-${anno}-${mes}-${ueb}.json`);
+      //this.mockFunction(data, `cantidadBajas-${anno}-${mes}-${ueb}.json`);
       return data[0]?.bajas || 0;
     } catch (error) {
       console.error(`Error bajas UEB ${ueb}:`, error.message);
@@ -605,7 +608,7 @@ export class ExportUtilities {
           mesActual,
           anno,
         ]);
-        this.mockFunction(prom, `promedios_ausentismo-${anno}-${mes}.json`);
+        //this.mockFunction(prom, `promedios_ausentismo-${anno}-${mes}.json`);
         result.push(prom);
 
         if (mesActual === mes) stop = true;
@@ -633,7 +636,7 @@ export class ExportUtilities {
       `;
 
       const resultados = await this.entityManager.query(selectQuery, [mes, anno]);
-      this.mockFunction(resultados, `promedios_ausentismo-${anno}-${mes}.json`);
+      //this.mockFunction(resultados, `promedios_ausentismo-${anno}-${mes}.json`);
 
       if (resultados.length > 0) {
         return {
