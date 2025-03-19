@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import axios from 'axios';
 
@@ -127,15 +127,15 @@ export class ExportUtilities {
             `Error obteniendo claves para UEB ${ueb.ueb}:`,
             error.message,
           );
-          // Continuar con la siguiente UEB en caso de error
-          continue;
+          // No continuar con la siguiente UEB en caso de error
+          throw new InternalServerErrorException('Error obteniendo claves de ausentismo');
         }
       }
 
       return result;
     } catch (error) {
       console.error('Error en clavesAusentismo:', error.message);
-      throw new Error('Error obteniendo claves de ausentismo');
+      throw new InternalServerErrorException('Error obteniendo claves de ausentismo');
     }
   }
 

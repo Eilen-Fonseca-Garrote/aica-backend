@@ -232,7 +232,7 @@ export class ExportService {
         const [direcciones, modelo14B] = await Promise.all([
           client.get(`/recursosHumanos/direccionesUEB?ueb=${ueb}`),
           client.get(`/recursosHumanos/modelo14B?ueb=${ueb}`),
-        ]); //original
+        ]); 
 
         const direccionesData: DireccionModelo14B[] = direcciones.data.map(
           (dir: any) => ({
