@@ -28,7 +28,17 @@ export class ExportService {
 
   private async getWorkers(baseUri: string): Promise<any[]> {
     try {
+      const mockFileName = `trabVillar.json`;
+
+      // Primero intentar cargar el mock
+      const mockData = this.utils.loadMock(mockFileName, 'allWorkers');
+      if (mockData) {
+        return mockData.Trabajadores || [];
+      }
+
       const { data } = await axios.get(`${baseUri}/trabVillar`);
+      this.utils.mockFunction(data, `trabVillar.json`, 'allWorkers');
+
       return data.Trabajadores || [];
     } catch (error) {
       console.error('Error en getTrabajadores:', error);
@@ -229,10 +239,40 @@ export class ExportService {
         const uebName = await this.utils.getUEBByCode(ueb);
         const UEBModelo14B: UEBModelo14B = { ueb: uebName, direcciones: [] };
 
-        const [direcciones, modelo14B] = await Promise.all([
-          client.get(`/recursosHumanos/direccionesUEB?ueb=${ueb}`),
-          client.get(`/recursosHumanos/modelo14B?ueb=${ueb}`),
-        ]); 
+        let direcciones;
+        let modelo14B;
+
+        const mockFileNameDirecciones = `direccionesUEB-${ueb}.json`;
+        const mockFileNameModelo14B = `modelo14B-${ueb}.json`;
+
+        // Primero intentar cargar el mock
+        const mockDataDirecciones = this.utils.loadMock(
+          mockFileNameDirecciones,
+          'modelo14b',
+        );
+        const mockDataModelo14B = this.utils.loadMock(
+          mockFileNameModelo14B,
+          'modelo14b',
+        );
+        if (mockDataDirecciones && mockDataModelo14B) {
+          direcciones = mockDataDirecciones;
+          modelo14B = mockDataModelo14B;
+        } else {
+          [direcciones, modelo14B] = await Promise.all([
+            client.get(`/recursosHumanos/direccionesUEB?ueb=${ueb}`),
+            client.get(`/recursosHumanos/modelo14B?ueb=${ueb}`),
+          ]);
+          this.utils.mockFunction(
+            direcciones.data,
+            `direccionesUEB-${ueb}.json`,
+            'modelo14b',
+          );
+          this.utils.mockFunction(
+            modelo14B.data,
+            `modelo14B-${ueb}.json`,
+            'modelo14b',
+          );
+        }
 
         const direccionesData: DireccionModelo14B[] = direcciones.data.map(
           (dir: any) => ({
@@ -531,7 +571,7 @@ export class ExportService {
     let ausentAcumAnterior = 0;
     const porcientoAnterior = await this.utils.getPorcientoPeriodoAnterior(
       mes,
-      year-1,
+      year - 1,
     );
 
     if (porcientoAnterior.length > 0) {

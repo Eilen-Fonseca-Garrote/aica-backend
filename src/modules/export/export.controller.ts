@@ -10,9 +10,10 @@ import {
   HttpStatus,
   Query,
   Res,
+  HttpCode,
 } from '@nestjs/common';
 import { ExportService } from './export.service';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Readable } from 'stream';
 import { Response } from 'express';
 
@@ -21,6 +22,23 @@ import { Response } from 'express';
 export class ExportController {
   constructor(private readonly exportService: ExportService) {}
 
+
+  @ApiResponse({
+    status: HttpStatus.CREATED, // 201
+    description: 'Archivo Excel generado exitosamente.',
+    content: {
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': {
+        schema: { type: 'string', format: 'binary' }, // Indica que la respuesta es un archivo binario
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR, // 500
+    description: 'Error interno del servidor al generar el reporte.',
+  })
+  @ApiProduces(
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ) // Indica que el endpoint produce un Excel
   @Header(
     'content-type',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -29,6 +47,7 @@ export class ExportController {
     'Content-Disposition',
     `attachment; filename=trabajadores(${new Date().toISOString().split('T')[0]}).xlsx`,
   )
+  @HttpCode(HttpStatus.CREATED)
   @Get('reports/excel/all-workers')
   async exportAll() {
     try {
@@ -45,6 +64,22 @@ export class ExportController {
     }
   }
 
+  @ApiResponse({
+    status: HttpStatus.CREATED, // 201
+    description: 'Archivo Excel generado exitosamente.',
+    content: {
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': {
+        schema: { type: 'string', format: 'binary' }, // Indica que la respuesta es un archivo binario
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR, // 500
+    description: 'Error interno del servidor al generar el reporte.',
+  })
+  @ApiProduces(
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ) // Indica que el endpoint produce un Excel
   @Header(
     'Content-Type',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -53,6 +88,7 @@ export class ExportController {
     'Content-Disposition',
     `attachment; filename=modelo14B(${new Date().getMonth() + 1}-${new Date().getFullYear()}).xlsx`,
   )
+  @HttpCode(HttpStatus.CREATED)
   @Get('reports/excel/model14b')
   async exportModel14B() {
     try {
@@ -69,15 +105,67 @@ export class ExportController {
     }
   }
 
-  
+
+  @ApiResponse({
+    status: HttpStatus.CREATED, // 201
+    description: 'Archivo Excel generado exitosamente.',
+    content: {
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': {
+        schema: { type: 'string', format: 'binary' }, // Indica que la respuesta es un archivo binario
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR, // 500
+    description: 'Error interno del servidor al generar el reporte.',
+  })
+  @ApiProduces(
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ) // Indica que el endpoint produce un Excel
   @Get('reports/excel/ausentismo')
   async exportModelAusentismo(
     @Query('noLabDays') noLabDays: string,
     @Query('fechaAusentismo') fechaAusentismo: string,
     @Res({ passthrough: true }) res: Response, // Inyectar el objeto Response
   ) {
+    // Validación de noLabDays
+    if (!/^\d+$/.test(noLabDays)) {
+      throw new HttpException(
+        'noLabDays debe ser un número válido en formato string',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Validación de fechaAusentismo
+    const dateFormatRegex = /^(0[1-9]|1[0-2])-\d{4}$/;
+    if (!dateFormatRegex.test(fechaAusentismo)) {
+      throw new HttpException(
+        'Formato de fecha inválido. Debe ser MM-YYYY (ej: 02-2023)',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const [mes, year] = fechaAusentismo.split('-');
+
+    if (
+      parseInt(year) < 2000 ||
+      parseInt(year) > new Date().getFullYear() + 1
+    ) {
+      throw new HttpException(
+        `Año inválido. Debe estar entre 2000 y ${new Date().getFullYear() + 1}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Convertir y validar días no laborables
+    const diasNoLaborables = parseInt(noLabDays);
+    if (diasNoLaborables < 0 || diasNoLaborables > 365) {
+      throw new HttpException(
+        'Días no laborables deben estar entre 0 y 365',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     try {
-      const [mes, year] = fechaAusentismo.split('-');
       const buffer = await this.exportService.generateAusentismoExcel(
         mes,
         parseInt(year),
@@ -85,21 +173,25 @@ export class ExportController {
       );
 
       // Configurar los headers usando el objeto Response
-    res.set({
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename=modeloRL4(${mes}-${year}).xlsx`,
-    });
+      res.set({
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': `attachment; filename=modeloRL4(${mes}-${year}).xlsx`,
+      });
 
       const stream = new Readable();
       stream.push(buffer);
       stream.push(null);
 
+      res.status(HttpStatus.CREATED); // 201
       return new StreamableFile(stream);
     } catch (error) {
-      throw new HttpException(
-        'Error al generar el reporte: ' + error.message,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      const errorMessage =
+        error instanceof HttpException
+          ? error.getResponse()
+          : `Error al generar el reporte: ${error.message}`;
+
+      throw new HttpException(errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 }
