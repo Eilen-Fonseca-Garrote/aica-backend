@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import * as mysql2 from 'mysql2';
 import { envSchema } from './config/env.schema';
 import { ExportModule } from './modules/export/export.module';
+import { BuscarTrabajadorModule } from './modules/buscarTranajador/buscarTrabajador.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { ExportModule } from './modules/export/export.module';
       
   }),
     ExportModule,
+    BuscarTrabajadorModule
   ],
   
 })
