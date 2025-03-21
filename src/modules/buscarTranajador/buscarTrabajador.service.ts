@@ -58,4 +58,58 @@ export class BuscarTrabajadorService {
     console.log("result", result)
     return result;
   }
+
+  //Estudios
+  async getEstudiosTrabajador(ci: string, ueb: string) {
+    const url = `${this.baseUri}/recursosHumanos/estudiosTrabajadorCI?ci=${ci}&ueb=${ueb}`;
+    
+    try {
+      const response = await axios.get(url);
+      return response.data; 
+    } catch (error) {
+      throw new Error(`Error obteniendo datos: ${error.message}`);
+    }
+  }
+
+  //Familiares
+  async getFamiliaresTrabajador(ci: string, ueb: string) {
+    const url = `${this.baseUri}/recursosHumanos/informacionFamiliarCI?ci=${ci}&ueb=${ueb}`;
+    
+    try {
+      const response = await axios.get(url);
+      return response.data; 
+    } catch (error) {
+      throw new Error(`Error obteniendo datos: ${error.message}`);
+    }
+  }
+
+  //Datos Laborales
+  async getLaboralTrabajador(ci: string, ueb: string) { 
+    const url = `${this.baseUri}/recursosHumanos/laboralTrabajadorCI?ci=${ci}&ueb=${ueb}`;
+    
+    try {
+      const response = await axios.get(url);
+      return response.data; 
+    } catch (error) {
+      throw new Error(`Error obteniendo datos: ${error.message}`);
+    }
+  }
+
+  //Datos Personales
+  async getPersonalesTrabajador(ci: string, ueb: string, personalData: any = null) {
+    if (personalData === null) {
+      const url = `${this.baseUri}/recursosHumanos/trabajadorCI?ci=${ci}&ueb=${ueb}`;
+      try {
+        const response = await axios.get(url);
+        return response.data; 
+      } catch (error) {
+        throw new Error(`Error obteniendo datos: ${error.message}`);
+      }
+    }
+    return personalData;
+  }
+
+
+
+
 }
