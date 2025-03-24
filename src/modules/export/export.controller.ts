@@ -77,7 +77,7 @@ export class ExportController {
     @Res({ passthrough: true }) res: Response, // Inyectar el objeto Response
   ) {
     try {
-      const [mes, year] = fechaAusentismo.split('-');
+      const [mes, year] = fechaAusentismo.split('-');  // separar con - para fecha 
       const buffer = await this.exportService.generateAusentismoExcel(
         mes,
         parseInt(year),
@@ -94,7 +94,7 @@ export class ExportController {
       stream.push(buffer);
       stream.push(null);
 
-      return new StreamableFile(stream);
+      return new StreamableFile(stream); //jspdf  la biblioteca y la forma en que exporte los archivos
     } catch (error) {
       throw new HttpException(
         'Error al generar el reporte: ' + error.message,

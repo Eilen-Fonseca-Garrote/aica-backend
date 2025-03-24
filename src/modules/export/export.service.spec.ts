@@ -661,3 +661,7 @@ describe('ExportService - ModeloRL4', () => {
     }, 500);
   });
 });
+
+
+//  casos de prueba de esta forma con gpt para mis funcionalidades 
+// en cada funcionalidad, una prueba de rendimiento
