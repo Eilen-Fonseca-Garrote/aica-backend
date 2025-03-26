@@ -102,4 +102,27 @@ export class ExportController {
       );
     }
   }
-}
+
+
+// agregando los gets para extender el controlador con pdf
+
+@Header('Content-Type', 'application/pdf')
+@Header('Content-Disposition', `attachment; filename=trabajadores(${new Date().toISOString().split('T')[0]}).pdf`)
+@Get('reports/pdf/all-workers')
+async exportAllPdf() {
+  try {
+    const buffer = await this.exportService.generateAllWorkersPdf();
+    const stream = new Readable();
+    stream.push(buffer);
+    stream.push(null);
+    return new StreamableFile(stream);
+  } catch (error) {
+    throw new HttpException(
+      'Error al generar el reporte: ' + error.message,
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+  }
+
+
+
+}}
