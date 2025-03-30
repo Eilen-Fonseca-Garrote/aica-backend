@@ -33,7 +33,6 @@ export class BuscarTrabajadorService {
 
   private filterCondecoraciones(serviceResponse: any[], type: string): any[] {
     const result: any[] = [];
-    console.log("serviceResponse", serviceResponse)
     for (const sr of serviceResponse) {
       let flag = false;
       let i = 0;
@@ -55,7 +54,6 @@ export class BuscarTrabajadorService {
         result.push(sr);
       }
     }
-    console.log("result", result)
     return result;
   }
 

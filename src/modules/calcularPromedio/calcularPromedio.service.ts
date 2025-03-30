@@ -70,10 +70,7 @@ export class CalcularPromedioService {
             promedio = await this.getPromTrabajadores(ueb, "287", mes, anno);
             break;
           case "25":
-            console.log("mes", mes)
-            console.log("anno", anno)
             promedio = await this.getPromTrabajadores(ueb, direccionLiorad.toString(), mes, anno);
-            console.log("promedio", promedio)
             break;
           case "100":
             promedio = await this.getPromTrabajadores(ueb, "285", mes, anno);
