@@ -55,6 +55,7 @@ export class BuscarTrabajadorController {
       HttpStatus.INTERNAL_SERVER_ERROR,
     );
   }
+}
 
   @Get('/informacionFamiliar') //Familia
   async getFamiliares(
@@ -69,6 +70,7 @@ export class BuscarTrabajadorController {
       HttpStatus.INTERNAL_SERVER_ERROR,
     );
   }
+}
 
   @Get('/laboralTrabajador') //Datos laborales
   async getLaboral(
@@ -83,16 +85,29 @@ export class BuscarTrabajadorController {
       HttpStatus.INTERNAL_SERVER_ERROR,
     );
   }
-
+}
   //datos personales
-  @Get(/trabajador) { 
-  async getPersonalData(
-    @Query('ci') ci: string, 
-    @Query('ueb') ueb: string) {
-    return this.buscarTrabajadorService.getPersonalesTrabajador(ci,ueb);
+  @Get('/trabajador')
+    async getPersonalData(
+      @Query('ci') ci: string, 
+      @Query('ueb') ueb: string) {
+      try{
+      return this.buscarTrabajadorService.getPersonalesTrabajador(ci,ueb);
+      }
+      catch (error) {
+        throw new HttpException(
+          'Error al generar el reporte: ' + error.message,
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+    }
+
+  //Trabajadores por nombre
+  @Get('/trabajadoresPorNombre')
+  async getTrabajadorNombreCompleto(
+    @Query('nomApell') nomApell: string,
+    @Query('ueb') ueb: string,
+  ) {
+    return this.buscarTrabajadorService.getTrabajadorNombreCompleto(nomApell, ueb);
   }
-
-
-
-
 }

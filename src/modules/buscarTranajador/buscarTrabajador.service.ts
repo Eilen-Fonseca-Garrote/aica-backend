@@ -109,6 +109,16 @@ export class BuscarTrabajadorService {
     return personalData;
   }
 
+  //Trabajador Por nombre
+  async getTrabajadorNombreCompleto(nomApell: string, ueb: string): Promise<any> {
+    try {
+      const url = `${this.baseUri}/recursosHumanos/trabajadorNombreCompleto?nomApell=${nomApell}&ueb=${ueb}`;
+      const response = await axios.get(url);
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to fetch trabajador data: ${error.message}`);
+    }
+  }
 
 
 

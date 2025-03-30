@@ -14,4 +14,4 @@ import { ConfigModule } from "@nestjs/config";
   controllers: [CalcularPromedioController],
   providers: [CalcularPromedioService],
 })
-export class BuscarTrabajadorModule{}
+export class CalcularPromedioModule{}

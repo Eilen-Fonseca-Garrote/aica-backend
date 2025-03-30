@@ -9,12 +9,15 @@ import {
   UEBModelo14B,
 } from '../../common/types/model14b.types';
 import { AusentismoData } from '../../common/types/absenteeism.types';
+import { EntityManager } from 'typeorm';
+import { profile } from 'console';
 
 @Injectable()
 export class CalcularPromedioService {
     private baseUri: string;
     constructor(
       private readonly configService: ConfigService,
+      private readonly entityManager: EntityManager,      
     ) {
       this.getBaseUri();
     }
@@ -23,300 +26,390 @@ export class CalcularPromedioService {
       this.baseUri = this.configService.get<string>('SIGERH_BASE_PATH') as string;
     }
    
-    //Calcular promedio mensual
-  async getPromedioMensual(ueb: string, fecha: string) {
-    const clave26 = await this.getPromedioByClaveId(26);
-    const [mesStr, annoStr] = fecha.split("-");
-    const mes = parseInt(mesStr, 10);
-    const anno = parseInt(annoStr, 10);
-
-    let direccionLiorad = 11;
-    if ((mes >= 8 && anno === 2020) || anno > 2020) {
-      direccionLiorad = 276;
-    }
-
-    let promedio = null;
-    let total: any[] = [];
-    let promedioTotal: any[] = [];
-
-    if (ueb === "0") {
-      promedioTotal = await this.calcularPromedioGeneral(clave26, mes, anno, fecha, direccionLiorad);
-    } else {
-      let clave26Todas = null;
-      clave26Todas = await this.fetchData(`/recursosHumanos/bajaTrab?ueb=${ueb}&mes=${mes}&anno=${anno}`);
-
-      const direcciones: Record<string, number> = {
-        "55": 287,
-        "25": direccionLiorad,
-        "100": 285,
-        "57": 302
-      };
-
-      if (ueb in direcciones) {
-        promedio = await this.fetchData(`/recursosHumanos/promTrabajadores?ueb=${ueb}&direccion=${direcciones[ueb]}&mes=${mes}&anno=${anno}`);
+    async getPromedioMensual(ueb: string, fecha: string) {
+      // Parse date
+      const [mesStr, anno] = fecha.split('-');
+      const mes = parseInt(mesStr);
+      
+      // Initialize variables
+      let promedio: any = null;
+      let total: any[] = [];
+      let direccionLiorad = 11;
+      
+      // Set direccionLiorad based on date
+      if ((mes >= 8 && anno === "2020") || anno > "2020") {
+        direccionLiorad = 276;
+      }
+  
+      // Get clave26 (assuming this is a separate service)
+      const clave26 = await this.getPromedioByClaveId('26');
+      const clave26Restar = clave26[0].restar;
+  
+      if (ueb === "0") {
+        // Handle case for UEB 0
+        const fuentePrimaria = await this.getFuentePrimaria();
+        const promedioTotal = await this.calcularPromedioGeneral(clave26[0], mes, anno, fecha, fuentePrimaria);
+        
+        return {
+          promedio: null,
+          promedioAica: promedioTotal['AICA']?.promedio,
+          promedioLiorad: promedioTotal['LIORAD']?.promedio,
+          promedioCitox: promedioTotal['CITOSTÁTICOS']?.promedio,
+          promedioJT: promedioTotal['JULIO TRIGO']?.promedio,
+          promedioSH: promedioTotal['SH+']?.promedio,
+          total: promedioTotal['total'],
+          todasUeb: promedioTotal['todasUEB'],
+          clave26: clave26Restar
+        };
       } else {
-        promedio = await this.fetchData(`/recursosHumanos/promTrabajadores?ueb=${ueb}&direccion=%%&mes=${mes}&anno=${anno}`);
-      }
-
-      if (ueb === "25" || ueb === "55") {
-        const clave36 = await this.fetchData(`/recursosHumanos/fisicoMujeres?ueb=${ueb}&mes=${mes}&anno=${anno}`);
-        promedio = this.restaClave36(promedio, clave36);
-      }
-
-      total = this.addTotalPromedioMensual(promedio, 0, total, clave26Todas);
-    }
-
-    if (promedioTotal.length === 0) {
-      return { promedio, total, clave26: clave26.restar };
-    }
-
-    return {
-      promedio,
-      promedioAica: promedioTotal[0],
-      promedioLiorad: promedioTotal[1],
-      promedioCitox: promedioTotal[2],
-      promedioJT: promedioTotal[3],
-      promedioSH: promedioTotal[4],
-      total: promedioTotal[5],
-      todasUeb: promedioTotal[6],
-      clave26: clave26.restar
-    };
-  }
-
-  private async fetchData(endpoint: string) {
-    try {
-      const response = await firstValueFrom(this.httpService.get(`${this.baseUri}${endpoint}`));
-      return response.data;
-    } catch (error) {
-      throw new Error(`Error obteniendo datos de ${endpoint}: ${error.message}`);
-    }
-  }
-
-  private async getPromedioByClaveId(claveId: number) {
-    return { restar: 10 };
-  }
-
-  private async calcularPromedioGeneral(clave26: any, mes: number, anno: number, fecha: string, direccion: number) {
-    return [1, 2, 3, 4, 5, 6, 7]; 
-  }
-
-  private restaClave36(promedio: any, clave36: any) {
-    return promedio; 
-  }
-
-  private addTotalPromedioMensual(promedio: any, valor: number, total: any[], clave26Todas: any) {
-    return total; 
-  }
-//---------------------------------------------------------------------//
-  //Exportar a PDF Promedio mensual
-  async getPromedioMensualPDF(ueb: string, fecha: string, res: Response) {
-    const clave26 = await this.getPromedioByClaveId(26);
-    const [mesStr, annoStr] = fecha.split("-");
-    const mes = parseInt(mesStr, 10);
-    const anno = parseInt(annoStr, 10);
-
-    let direccionLiorad = 11;
-    if ((mes >= 8 && anno === 2020) || anno > 2020) {
-      direccionLiorad = 276;
-    }
-
-    let promedio: any = [];
-    let total: any[] = [];
-    let promedioTotal: any[] = [];
-    let clave26Todas = null;
-    let uebName = '';
-
-    if (ueb === "0") {
-      promedioTotal = await this.calcularPromedioGeneral(clave26, mes, anno, fecha, direccionLiorad);
-    } else {
-      clave26Todas = await this.fetchData(`/recursosHumanos/bajaTrab?ueb=${ueb}&mes=${mes}&anno=${anno}`);
-
-      const direcciones: Record<string, number> = {
-        "55": 287,
-        "25": direccionLiorad,
-        "100": 285,
-        "57": 302
-      };
-
-      if (ueb in direcciones) {
-        promedio = await this.fetchData(`/recursosHumanos/promTrabajadores?ueb=${ueb}&direccion=${direcciones[ueb]}&mes=${mes}&anno=${anno}`);
-      } else {
-        promedio = await this.fetchData(`/recursosHumanos/promTrabajadores?ueb=${ueb}&direccion=%%&mes=${mes}&anno=${anno}`);
-      }
-
-      if (ueb === "25" || ueb === "55") {
-        const clave36 = await this.fetchData(`/recursosHumanos/fisicoMujeres?ueb=${ueb}&mes=${mes}&anno=${anno}`);
-        promedio = this.restaClave36(promedio, clave36);
-      }
-
-      uebName = await this.getUEBByCode(ueb);
-      total = this.addTotalPromedioMensual(promedio, 0, total, clave26Todas);
-    }
-
-    // Generar PDF
-    const doc = new PDFDocument();
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=PromedioMensual_${fecha}.pdf`);
-
-    doc.pipe(res);
-    doc.fontSize(18).text('Reporte de Promedio Mensual', { align: 'center' });
-    doc.moveDown();
-    doc.fontSize(12).text(`Fecha: ${fecha}`);
-    doc.text(`UEB: ${uebName}`);
-    doc.moveDown();
-
-    if (promedioTotal.length === 0) {
-      doc.text(`Clave 26: ${clave26.restar}`);
-      doc.text(`Total: ${JSON.stringify(total)}`);
-    } else {
-      doc.text(`Promedio AICA: ${promedioTotal[0]}`);
-      doc.text(`Promedio Liorad: ${promedioTotal[1]}`);
-      doc.text(`Promedio Citox: ${promedioTotal[2]}`);
-      doc.text(`Promedio JT: ${promedioTotal[3]}`);
-      doc.text(`Promedio SH: ${promedioTotal[4]}`);
-      doc.text(`Total: ${promedioTotal[5]}`);
-      doc.text(`Todas UEB: ${promedioTotal[6]}`);
-    }
-
-    doc.end();
-  }
-
-  private async fetchData(endpoint: string) {
-    try {
-      const response = await firstValueFrom(this.httpService.get(`${this.baseUri}${endpoint}`));
-      return response.data;
-    } catch (error) {
-      throw new Error(`Error obteniendo datos de ${endpoint}: ${error.message}`);
-    }
-  }
-
-  private async getPromedioByClaveId(claveId: number) {
-    return { restar: 10 }; // Simulación del método en Laravel
-  }
-
-  private async calcularPromedioGeneral(clave26: any, mes: number, anno: number, fecha: string, direccion: number) {
-    return [1, 2, 3, 4, 5, 6, 7]; // Simulación del cálculo
-  }
-
-  private async getUEBByCode(ueb: string) {
-    return `UEB_${ueb}`; // Simulación de conversión de código a nombre
-  }
-
-  private restaClave36(promedio: any, clave36: any) {
-    return promedio; // Simulación de la resta
-  }
-
-  private addTotalPromedioMensual(promedio: any, valor: number, total: any[], clave26Todas: any) {
-    return total; // Simulación del cálculo
-  }
-
-
-//---------------------------------------------------------------------//
-    //Calcular promedio diario
-
-    async getPromedioRangoAjax(ueb: string, direccion: string, fecha: string) {
-        const [anno, mes] = fecha.split("-");
-        let unidad = '';
-        let uebName = await this.getUEBByCode(ueb);
-    
-        // Ajuste de dirección según UEB y fecha
-        if (ueb === "25" && parseInt(mes) >= 9 && anno === "2020") {
-          direccion = "276";
-        } else if (ueb === "25" && parseInt(mes) < 9 && anno === "2020") {
-          direccion = "11";
+        // Handle specific UEB cases
+        const clave26Todas = await this.getBajaTrab(ueb, mesStr, anno);
+  
+        switch (ueb) {
+          case "55":
+            promedio = await this.getPromTrabajadores(ueb, "287", mes, anno);
+            break;
+          case "25":
+            console.log("mes", mes)
+            console.log("anno", anno)
+            promedio = await this.getPromTrabajadores(ueb, direccionLiorad.toString(), mes, anno);
+            console.log("promedio", promedio)
+            break;
+          case "100":
+            promedio = await this.getPromTrabajadores(ueb, "285", mes, anno);
+            break;
+          case "57":
+            promedio = await this.getPromTrabajadores("57", "302", mes, anno);
+            break;
+          default:
+            promedio = await this.getPromTrabajadores(ueb, "%%", mes, anno);
         }
-    
-        const promedio = await this.fetchData(
-          `/recursosHumanos/promTrabajadoresRangoFechas?ueb=${ueb}&direccion=${direccion}&mes=${mes}&fecha=${fecha}`
+  
+        // Special handling for UEB 25 and 55
+        if (ueb === "25" || ueb === "55") {
+          const clave36 = await this.getFisicoMujeres(ueb, mesStr, anno);
+          promedio = this.restaClave36(promedio, clave36);
+        }
+  
+        total = this.addTotalPromedioMensual(promedio, 0, total, clave26Todas);
+  
+        return {
+          promedio,
+          total,
+          clave26: clave26Restar
+        };
+      }
+    }
+
+    async getPromedioRango(ueb: string, direccion: string, fecha: string): Promise<any> {
+      const [anno, mes] = fecha.split('-');
+      let finalDireccion = direccion;
+  
+      // Handle special cases for UEB 25
+      if (ueb === "25") {
+        const mesNum = parseInt(mes);
+        if (mesNum >= 9 && anno === "2020") {
+          finalDireccion = "276";
+        } else if (mesNum < 9 && anno === "2020") {
+          finalDireccion = "11";
+        }
+      }
+  
+      try {
+        // Make the API request
+        const response = await axios.get(
+          `${this.baseUri}/recursosHumanos/promTrabajadoresRangoFechas?ueb=${ueb}&direccion=${finalDireccion}&mes=${mes}&fecha=${fecha}`
         );
-    
+        
+        let promedio = response.data;
+  
+        // Apply special processing if direccion is 1
         if (direccion === "1") {
           promedio = this.getPromedioDirGeneral(promedio);
         }
-    
-        if (promedio.length !== 0) {
-          unidad = promedio[0]['Unidad'];
-        }
-    
+  
+        const unidad = promedio.length > 0 ? promedio[0].Unidad : "";
         const total = this.getTotalPromedioDiario(promedio);
-    
+        const uebName = await this.getUEBByCode(ueb);
+  
         return {
           promedio,
           total,
           fecha,
           ueb: uebName,
-          direcc: unidad,
+          direcc: unidad
         };
+      } catch (error) {
+        throw new Error(`Failed to fetch promedio rango: ${error.message}`);
       }
-    //---------------------------------------------------------------------//
-    //Exportar a PDF promedio diario
+    }
+
+    private getPromedioDirGeneral(promedio: any[]): any[] {
+      return promedio.filter(prom => {
+        const dir = prom.Unidad?.trim();
+        return dir === "DIR. GENERAL";
+      });
+    }
+  
+    private getUEBByCode(code: string): string {
+      switch (code) {
+        case "16": return "AICA";
+        case "55": return "Julio Trigo";
+        case "25": return "Liorad";
+        case "57": return "SH+";
+        default: return "CITOX";
+      }
+    }
     
-      async getPromedioRangoPDF(ueb: string, direccion: string, fecha: string, res: Response) {
-        const [anno, mes] = fecha.split("-");
-        let unidad = '';
-    
-        // Ajuste de dirección según UEB y fecha
-        if (ueb === "25" && parseInt(mes) >= 9 && anno === "2020") {
-          direccion = "276";
-        } else if (ueb === "25" && parseInt(mes) < 9 && anno === "2020") {
-          direccion = "11";
-        }
-    
-        let promedio = await this.fetchData(
-          `/recursosHumanos/promTrabajadoresRangoFechas?ueb=${ueb}&direccion=${direccion}&mes=${mes}&fecha=${fecha}`
+    private getTotalPromedioDiario(promedio: any[]): { Promedio: number; PromedioMujeres: number }[] {
+      // If you need to maintain exact PHP behavior with index 0
+      const resultado: { Promedio: number; PromedioMujeres: number }[] = [];
+      
+      const totals = {
+          Promedio: promedio.reduce((sum, prom) => sum + (prom.HPDTT || 0), 0),
+          PromedioMujeres: promedio.reduce((sum, prom) => sum + (prom.HPDTM || 0), 0)
+      };
+  
+      resultado[0] = totals; // Now TypeScript understands the type
+      return resultado;
+  }
+  
+    async getPromedioByClaveId(id: string): Promise<any[]> {
+      try {
+        // Using parameterized query to prevent SQL injection
+        const results = await this.entityManager.query(
+          `SELECT * FROM promedio WHERE clave = ?`,
+          [id]
         );
+        
+        // If you need to return the first item like in the PHP version:
+        // return results.length > 0 ? [results[0]] : [];
+        
+        return results;
+      } catch (error) {
+        throw new Error(`Failed to fetch promedio by clave: ${error.message}`);
+      }
+    }
+
+    private async getFuentePrimaria(entidad: number = 1): Promise<any> {
+      try {
+        const response = await axios.get(
+          `${this.baseUri}/fuente_primaria/laboratorios?entidad=${entidad}`
+        );
+        const fuentePrimariaSvc = response.data;
     
-        if (direccion === "1") {
-          promedio = this.getPromedioDirGeneral(promedio);
+        const arrayResult: any = {};
+        
+        for (const fc of fuentePrimariaSvc) {
+          const ueb = fc.nombre;
+          const codigo = fc.codigo;
+          
+          arrayResult[ueb] = {
+            codigo,
+            direccion: '',
+            diminutivo: ''
+          };
+    
+          switch (ueb) {
+            case 'LIORAD':
+              arrayResult[ueb].direccion = '276';
+              arrayResult[ueb].diminutivo = 'Liorad';
+              break;
+            case 'JULIO TRIGO':
+              arrayResult[ueb].direccion = '287';
+              arrayResult[ueb].diminutivo = 'JT';
+              break;
+            case 'CITOSTÁTICOS':
+              arrayResult[ueb].direccion = '285';
+              arrayResult[ueb].diminutivo = 'CITOX';
+              break;
+            case 'SH+':
+              arrayResult[ueb].direccion = '302';
+              arrayResult[ueb].diminutivo = 'SH';
+              break;
+            case 'AICA':
+              arrayResult[ueb].diminutivo = 'AICA';
+              break;
+          }
         }
     
-        if (promedio.length !== 0) {
-          unidad = promedio[0]['Unidad'];
+        return arrayResult;
+      } catch (error) {
+        throw new Error('Error en el servicio de fuente primaria');
+      }
+    }
+
+    private async calcularPromedioGeneral(
+      clave26: any,
+      mes: number,
+      anno: string,
+      fecha: string,
+      fuentePrimaria: any
+    ): Promise<any> {
+      const promedioGeneral: any = {};
+      const total: any[] = [];
+      const [mesStr] = fecha.split('-');
+    
+      try {
+        let indice = 0;
+        
+        for (const [ueb, fc] of Object.entries(fuentePrimaria)){
+          const codigo = (fc as any).codigo;
+          let clave26Param: any = false;
+    
+          if (clave26.restar === 1) {
+            clave26Param = await this.getBajaTrab(codigo, mesStr, anno);
+          }
+    
+          promedioGeneral[ueb] = { promedio: null };
+    
+          if ((fc as any).direccion) {
+            const direccion = (fc as any).direccion;
+            promedioGeneral[ueb].promedio = await this.getPromTrabajadores(
+              codigo,
+              direccion,
+              mes,
+              anno
+            );
+          } else {
+            promedioGeneral[ueb].promedio = await this.getPromTrabajadores(
+              codigo,
+              '%%',
+              mes,
+              anno
+            );
+          }
+    
+          this.addTotalPromedioMensual(
+            promedioGeneral[ueb].promedio,
+            indice,
+            total,
+            clave26Param
+          );
+          indice++;
         }
     
-        const total = this.getTotalPromedioDiario(promedio);
+        promedioGeneral.total = total;
+        promedioGeneral.todasUEB = this.calcTotalTodasUEB(total);
     
-        // Generar PDF
-        const doc = new PDFDocument();
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename=PromedioDiario_${fecha}.pdf`);
-    
-        doc.pipe(res);
-        doc.fontSize(18).text('Reporte de Promedio Diario', { align: 'center' });
-        doc.moveDown();
-        doc.fontSize(12).text(`Fecha: ${fecha}`);
-        doc.text(`UEB: ${ueb}`);
-        doc.text(`Dirección: ${unidad}`);
-        doc.moveDown();
-    
-        doc.text('Promedios:');
-        promedio.forEach((p: any, index: number) => {
-          doc.text(`${index + 1}. ${JSON.stringify(p)}`);
-        });
-    
-        doc.text(`Total: ${JSON.stringify(total)}`);
-        doc.end();
+        return promedioGeneral;
+      } catch (error) {
+        throw new Error('Error calculating general average');
       }
+    }
     
-      private async fetchData(endpoint: string) {
-        try {
-          const response = await firstValueFrom(this.httpService.get(`${this.baseUri}${endpoint}`));
-          return response.data;
-        } catch (error) {
-          throw new Error(`Error obteniendo datos de ${endpoint}: ${error.message}`);
+    private async getBajaTrab(ueb: string, mes: string, anno: string): Promise<any> {
+      try {
+        const response = await axios.get(
+          `${this.baseUri}/recursosHumanos/bajaTrab?ueb=${ueb}&mes=${mes}&anno=${anno}`
+        );
+        return response.data;
+      } catch (error) {
+        console.error('Error in getBajaTrab:', error);
+        return false; // Matching PHP's behavior
+      }
+    }
+
+    private async getPromTrabajadores(ueb: string, direccion: string, mes: number, anno: string): Promise<any> {
+      try {
+        const response = await axios.get(
+          `${this.baseUri}/recursosHumanos/promTrabajadores?ueb=${ueb}&direccion=${direccion}&mes=${mes}&anno=${anno}`
+        );
+        return response.data;
+      } catch (error) {
+        console.error('Error in getPromTrabajadores:', error);
+        return false; // Matching PHP's behavior
+      }
+    }
+    
+    private async getFisicoMujeres(ueb: string, mes: string, anno: string): Promise<any> {
+      try {
+        const response = await axios.get(
+          `${this.baseUri}/recursosHumanos/fisicoMujeres?ueb=${ueb}&mes=${mes}&anno=${anno}`
+        );
+        return response.data;
+      } catch (error) {
+        console.error('Error in getFisicoMujeres:', error);
+        return false; // Matching PHP's behavior
+      }
+    }
+
+    private restaClave36(promedio: any[], clave36: any[]): any[] {
+      const resultado: any[] = [];
+      
+      if (clave36.length > 0) {
+        for (let i = 0; i < promedio.length; i++) {
+          const prom = { ...promedio[i] }; // Create a copy to avoid mutation
+          
+          prom.HPromFisic = prom.HPromFisic - (clave36[i]?.Total || 0);
+          prom.HPromFMuj = prom.HPromFMuj - (clave36[i]?.Total_Mujeres || 0);
+          
+          resultado.push(prom);
+        }
+        return resultado;
+      }
+      
+      return promedio;
+    }
+
+    private addTotalPromedioMensual(
+      promedio: any[] | any[][],
+      indice: number,
+      resultado: any[],
+      clave26: any,
+      inicio = false
+    ): any[] {
+      let totalFisico = 0;
+      let totalFisicoMuj = 0;
+      let totalPromedio = 0;
+      let totalPromedioMujeres = 0;
+    
+      if (inicio) {
+        // Handle nested array case
+        for (const promArray of promedio as any[][]) {
+          for (const prom of promArray) {
+            totalFisico += prom.HPromFisic || 0;
+            totalFisicoMuj += prom.HPromFMuj || 0;
+            totalPromedio += prom.HPromTot || 0;
+            totalPromedioMujeres += prom.HPromMuj || 0;
+          }
+        }
+      } else {
+        // Handle flat array case
+        for (const prom of promedio as any[]) {
+          totalFisico += prom.HPromFisic || 0;
+          totalFisicoMuj += prom.HPromFMuj || 0;
+          totalPromedio += prom.HPromTot || 0;
+          totalPromedioMujeres += prom.HPromMuj || 0;
         }
       }
     
-      private async getUEBByCode(ueb: string) {
-        return `UEB_${ueb}`; // Simulación de conversión de código a nombre
+      // Initialize the result object if it doesn't exist
+      if (!resultado[indice]) {
+        resultado[indice] = {};
       }
     
-      private getPromedioDirGeneral(promedio: any) {
-        return promedio; // Simulación de transformación
-      }
+      resultado[indice] = {
+        ...resultado[indice],
+        totalFisico,
+        totalFisicoMuj,
+        totalPromedio,
+        totalPromedioMujeres
+      };
     
-      private getTotalPromedioDiario(promedio: any) {
-        return promedio.length; // Simulación de cálculo total
-      }  
+      return resultado;
+    }
+    
+    private calcTotalTodasUEB(total: any[]): any {
+      // Implement this method based on your Utilities::calcTotalTodasUEB()
+      // This is a placeholder - replace with your actual calculation
+      return {
+        totalFisico: total.reduce((sum, item) => sum + (item.totalFisico || 0), 0),
+        totalFisicoMuj: total.reduce((sum, item) => sum + (item.totalFisicoMuj || 0), 0),
+        totalPromedio: total.reduce((sum, item) => sum + (item.totalPromedio || 0), 0),
+        totalPromedioMujeres: total.reduce((sum, item) => sum + (item.totalPromedioMujeres || 0), 0)
+      };
+    }
+
 
 }

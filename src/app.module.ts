@@ -5,6 +5,7 @@ import * as mysql2 from 'mysql2';
 import { envSchema } from './config/env.schema';
 import { ExportModule } from './modules/export/export.module';
 import { BuscarTrabajadorModule } from './modules/buscarTranajador/buscarTrabajador.module';
+import { CalcularPromedioModule } from './modules/calcularPromedio/calcularPromedio.module';
 
 @Module({
   imports: [
@@ -31,7 +32,8 @@ import { BuscarTrabajadorModule } from './modules/buscarTranajador/buscarTrabaja
       
   }),
     ExportModule,
-    BuscarTrabajadorModule
+    BuscarTrabajadorModule,
+    CalcularPromedioModule
   ],
   
 })

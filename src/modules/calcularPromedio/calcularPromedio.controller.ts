@@ -14,49 +14,77 @@ import {
 import { CalcularPromedioService } from './calcularPromedio.service';
 import { ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
-import { Readable } from 'stream';
+import { PromedioPdfUtil } from './utils/pdf.utils';
+import { PromedioReport } from './utils/pdf.utils';
+import { PromedioGeneralReport } from './utils/pdf.utils';
 
 @ApiTags('calcularPromedio')
 @Controller('calcularPromedio')
-
 export class CalcularPromedioController {
-   constructor(private readonly calcularPromedioService: CalcularPromedioService) {}
+   constructor(private readonly promedioService: CalcularPromedioService) {}
  
-   //Calcular promedio mensual
-  @Get('mensual') //que se pone aqui?
-  async getPromedioMensual(
-    @Query('ueb') ueb: string, 
-    @Query('fecha') fecha: string) {
-    return this.calcularPromedioService.getPromedioMensual(ueb, fecha);
+   @Get('promedioMensual')
+   async getPromedioMensual(
+     @Query('ueb') ueb: string,
+     @Query('fecha') fecha: string
+   ) {
+     return this.promedioService.getPromedioMensual(ueb, fecha);
+   }
+
+   @Get('promedioMensualPdf')
+  async exportPdf(
+    @Query('ueb') ueb: string,
+    @Query('fecha') fecha: string,
+    @Res() res: Response
+  ) {
+    try {
+      const data = await this.promedioService.getPromedioMensual(ueb, fecha);
+      
+      if (!data) {
+        return res.status(404).send('Datos no encontrados');
+      }
+
+      await PromedioPdfUtil.exportPromedioMensualPdf(data as PromedioReport | PromedioGeneralReport, res);
+    } catch (error) {
+      console.error('Error generando PDF:', error);
+      return res.status(500).send('Error al generar el reporte');
+    }
   }
 
-  //Expportar promedio mensual
-  @Get('mensual/pdf')
-  async getPromedioMensualPDF(
-    @Query('ueb') ueb: string, 
-    @Query('fecha') fecha: string, 
- ) {
-    return this.promedioService.getPromedioMensualPDF(ueb, fecha, res);
-  }
-//Calcular promedio diario
-  @Get('rango/ajax')
-  async getPromedioRangoAjax(
+  @Get('promedioDiarioRango')
+  async getPromedioRango(
     @Query('ueb') ueb: string,
     @Query('direccion') direccion: string,
     @Query('fecha') fecha: string
   ) {
-    return this.promedioService.getPromedioRangoAjax(ueb, direccion, fecha);
+    const data = await this.promedioService.getPromedioRango(ueb, direccion, fecha);
+    
+    return {
+      success: true,
+      promedio: data.promedio,
+      total: data.total[0], 
+      fecha: data.fecha,
+      ueb: data.ueb,
+      direcc: data.direcc
+    };
   }
-//Exportar promedio diario
-  @Get('rango/pdf')
-  async getPromedioRangoPDF(
+
+  @Get('promedioDiarioRango/pdf')
+  async exportRangoPdf(
     @Query('ueb') ueb: string,
     @Query('direccion') direccion: string,
     @Query('fecha') fecha: string,
     @Res() res: Response
   ) {
-    return this.promedioService.getPromedioRangoPDF(ueb, direccion, fecha, res);
+    try {
+      const data = await this.promedioService.getPromedioRango(ueb, direccion, fecha);
+      await PromedioPdfUtil.exportPromedioDiarioPdf(data, res);
+    } catch (error) {
+      return res.status(500).json({
+        message: 'Error generating PDF',
+        error: error.message
+      });
+    }
   }
-
 
 }
