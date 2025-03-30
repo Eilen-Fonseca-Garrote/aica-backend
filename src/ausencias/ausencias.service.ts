@@ -1,4 +1,5 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import { FiltersDto } from './dto/filters.dto';
 import axios from 'axios';
 
 @Injectable()
@@ -86,4 +87,75 @@ export class AusenciasService {
     }
   }
 
+
+  
+  
+  
+  
+  
+  
+  
+  //Filtrar trabajadores por ueb, dirección, área, municipio, reparto, sexo, cantidad de hijos
+  //filtrar trabajadores también por grupo sanguíneo, nivel escolar, raza, carrera
+
+  public obtenerFiltros(filters: FiltersDto): Array<[string, string]> {
+    const resultado: Array<[string, string]> = [];
+
+    if (filters.direccionFSelect && filters.uebSelect) {
+      const direccion = this.getDireccionById(filters.direccionFSelect, filters.uebSelect);
+      resultado.push(['Dirección', direccion]);
+    }
+
+    if (filters.cargo) {
+      resultado.push(['Cargo', filters.cargo.trim()]);
+    }
+
+    if (filters.sexoSelect) {
+      resultado.push(['Sexo', filters.sexoSelect.trim()]);
+    }
+
+    if (filters.edad && filters.edadOperator) {
+      resultado.push(['Edad', `${filters.edadOperator}${filters.edad}`]);
+    }
+
+    if (filters.carrera) {
+      resultado.push(['Carrera', filters.carrera.trim()]);
+    }
+
+    if (filters.municipioSelect) {
+      resultado.push(['Municipio', filters.municipioSelect.trim()]);
+    }
+
+    if (filters.grupoFactor) {
+      resultado.push(['Grupo Sanguíneo', filters.grupoFactor.trim()]);
+    }
+
+    if (filters.hijos !== undefined) {
+      resultado.push(['Cantidad de Hijos', filters.hijos.toString()]);
+    }
+
+    if (filters.pcc) {
+      resultado.push(['PCC', 'pertenece']);
+    }
+
+    if (filters.ujc) {
+      resultado.push(['UJC', 'pertenece']);
+    }
+
+    if (filters.uebSelect) {
+      resultado.push(['UEB', filters.uebSelect.trim()]);
+    }
+
+    // Agrega más filtros según sea necesario
+
+    return resultado;
+  }
+
+  private getDireccionById(direccionId: string, uebId: string): string {
+    // Simula la obtención de la dirección por ID
+    return `Dirección Obtenida para ID ${direccionId} y UEB ${uebId}`;
+  }
 }
+  
+
+  
