@@ -1,6 +1,12 @@
-import { Controller } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
+import { AusenciasService } from './ausencias.service';
 
 @Controller('ausencias')
 export class AusenciasController {
-    //Terminar de hacer el Controlador del modulo de ausentismos 
+  constructor(private readonly ausenciasService: AusenciasService) {}
+
+  @Get('claves')
+  async getClaves(@Query('ueb') ueb: string, @Query('fecha') fecha: string) {
+    return this.ausenciasService.listAusentismoClaves(ueb, fecha);
+  }
 }
