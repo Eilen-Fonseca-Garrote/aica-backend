@@ -1,6 +1,8 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { FiltersDto } from './dto/filters.dto';
 import axios from 'axios';
+import { jsPDF } from 'jspdf';
+import { Response } from 'express';
 
 @Injectable()
 export class AusenciasService {
@@ -155,6 +157,14 @@ export class AusenciasService {
     // Simula la obtención de la dirección por ID
     return `Dirección Obtenida para ID ${direccionId} y UEB ${uebId}`;
   }
+
+
+  //Probando el obtener trabajadores interruptos pdf que debo mover luego a export
+
+ 
+
+
+
 }
   
 

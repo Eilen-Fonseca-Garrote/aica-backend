@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Query,Body} from '@nestjs/common';
+import { Controller, Get, Post, Query,Body,Res} from '@nestjs/common';
 import { AusenciasService } from './ausencias.service';
 import { FiltersDto } from './dto/filters.dto';
+import { Response } from 'express';
 
 @Controller('ausencias')
 export class AusenciasController {
@@ -20,7 +21,6 @@ export class AusenciasController {
   async getTrabajadoresInterruptos(@Query('ueb') ueb: string, @Query('fecha') fecha: string) {
     return this.ausenciasService.listTrabajadoresInterruptos(ueb, fecha);
   }
-
 
 }
 

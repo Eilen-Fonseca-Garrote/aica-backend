@@ -123,6 +123,17 @@ async exportAllPdf() {
     );
   }
 
+}
+  
+@Get('reports/pdf/interruptos')
+  async getInterruptosPDF(
+    @Query('ueb') ueb: string,
+    @Query('fecha') fecha: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    return this.exportService.getInterruptosPDF(ueb, fecha, res);
+  }
 
 
-}}
+
+}
