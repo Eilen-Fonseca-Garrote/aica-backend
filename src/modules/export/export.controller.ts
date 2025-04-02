@@ -13,9 +13,10 @@ import {
   HttpCode,
 } from '@nestjs/common';
 import { ExportService } from './export.service';
-import { ApiOperation, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Readable } from 'stream';
 import { Response } from 'express';
+import { ClavesDto } from '../ausencias/dto/claves.dto';
 
 @ApiTags('export')
 @Controller('export')

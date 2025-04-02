@@ -78,7 +78,8 @@ describe('ExportService - ExportAllWorkers', () => {
     } as any;
 
     // Instancia del servicio con los mocks
-    service = new ExportService(mockConfigService, mockUtils);
+    const mockAusenciasService = {} as any; // Mock for AusenciasService
+    service = new ExportService(mockConfigService, mockUtils, mockAusenciasService);
   });
 
   it('debería generar un Excel con datos formateados', async () => {
@@ -225,7 +226,8 @@ describe('ExportService - Model14B', () => {
       getUEBByCode: jest.fn().mockImplementation((code) => `UEB-${code}`),
     } as any;
 
-    service = new ExportService(mockConfigService, mockUtils);
+    const mockAusenciasService = {} as any; // Mock for AusenciasService
+    service = new ExportService(mockConfigService, mockUtils, mockAusenciasService);
   });
 
   describe('processModel14B', () => {
@@ -481,7 +483,8 @@ describe('ExportService - ModeloRL4', () => {
       getAltasBajas: jest.fn(),
     } as any;
 
-    service = new ExportService(mockConfigService, mockUtils);
+    const mockAusenciasService = {} as any; // Mock for AusenciasService
+    service = new ExportService(mockConfigService, mockUtils, mockAusenciasService);
   });
 
   describe('calcularAusentismoMensual', () => {
@@ -661,3 +664,9 @@ describe('ExportService - ModeloRL4', () => {
     }, 500);
   });
 });
+
+
+//  casos de prueba de esta forma con gpt para mis funcionalidades 
+// en cada funcionalidad, una prueba de caja negra 
+//mostrar  los pdf cde como deberia quedar
+//otro pdf de como quedo
