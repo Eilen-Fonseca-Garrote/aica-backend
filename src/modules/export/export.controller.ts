@@ -12,9 +12,10 @@ import {
   Res,
 } from '@nestjs/common';
 import { ExportService } from './export.service';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiTags } from '@nestjs/swagger';
 import { Readable } from 'stream';
 import { Response } from 'express';
+import { ClavesDto } from '../ausencias/dto/claves.dto';
 
 @ApiTags('export')
 @Controller('export')
@@ -108,10 +109,26 @@ export class ExportController {
 
 @Header('Content-Type', 'application/pdf')
 @Header('Content-Disposition', `attachment; filename=trabajadores(${new Date().toISOString().split('T')[0]}).pdf`)
-@Get('reports/pdf/all-workers')
-async exportAllPdf() {
+@ApiBody({ type: ClavesDto })
+@Post('reports/pdf/clavesAusentismo')
+async exportAllPdf(@Body() clavesDto: ClavesDto,) {
   try {
-    const buffer = await this.exportService.generateAllWorkersPdf();
+    const { codigos, date, ueb } = clavesDto;
+    if (!ueb || !date) {
+      throw new HttpException(
+        'Los parámetros UEB y fecha son obligatorios.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const fechaRegex = /^(0[1-9]|1[0-2])-\d{4}$/; // Formato MM-YYYY
+    if (!fechaRegex.test(date)) {
+      throw new HttpException(
+        'Formato de fecha inválido.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const buffer = await this.exportService.getClavesAusentismoPDF(codigos,date, ueb);
     const stream = new Readable();
     stream.push(buffer);
     stream.push(null);
@@ -129,9 +146,19 @@ async exportAllPdf() {
   async getInterruptosPDF(
     @Query('ueb') ueb: string,
     @Query('fecha') fecha: string,
-    @Res() res: Response,
-  ): Promise<void> {
-    return this.exportService.getInterruptosPDF(ueb, fecha, res);
+    @Res({ passthrough: true }) res: Response,
+  ){
+    const buffer = await this.exportService.getInterruptosPDF(ueb, fecha);
+    const stream = new Readable();
+    stream.push(buffer);
+    stream.push(null);
+  
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=interruptos(${ueb}-${fecha}).pdf`,
+    });
+    return new StreamableFile(stream);
   }
 
 

@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import * as mysql2 from 'mysql2';
 import { envSchema } from './config/env.schema';
 import { ExportModule } from './modules/export/export.module';
-import { AusenciasModule } from './ausencias/ausencias.module';
+import { AusenciasModule } from './modules/ausencias/ausencias.module';
 
 @Module({
   imports: [

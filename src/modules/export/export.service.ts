@@ -1,10 +1,17 @@
 // export.service.ts
-import { Injectable, InternalServerErrorException} from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { jsPDF } from 'jspdf';
 import axios from 'axios';
 import * as ExcelJS from 'exceljs';
-import { existsSync, mkdirSync } from 'fs';
+import{ClaveAusentismo} from '../../common/types/claves.types'
+import {
+  createReadStream,
+  existsSync,
+  mkdirSync,
+  writeFileSync,
+  rmSync,
+} from 'fs';
 import {
   DireccionModelo14B,
   UEBModelo14B,
@@ -13,6 +20,9 @@ import { AusentismoData } from '../../common/types/absenteeism.types';
 import { ExportUtilities } from './export.utility';
 import { Logger } from '@nestjs/common';
 import { Response } from 'express';
+import { AusenciasService } from '../ausencias/ausencias.service';
+import { applyPlugin } from 'jspdf-autotable';
+import { autoTable } from 'jspdf-autotable';
 
 @Injectable()
 export class ExportService {
@@ -22,6 +32,7 @@ export class ExportService {
   constructor(
     private readonly configService: ConfigService,
     private readonly utils: ExportUtilities,
+    private readonly ausenciasService: AusenciasService, // <-- Inyecta el servicio
   ) {
     this.getBaseUri();
   }
@@ -241,7 +252,7 @@ export class ExportService {
         const [direcciones, modelo14B] = await Promise.all([
           client.get(`/recursosHumanos/direccionesUEB?ueb=${ueb}`),
           client.get(`/recursosHumanos/modelo14B?ueb=${ueb}`),
-        ]); 
+        ]);
 
         const direccionesData: DireccionModelo14B[] = direcciones.data.map(
           (dir: any) => ({
@@ -540,7 +551,7 @@ export class ExportService {
     let ausentAcumAnterior = 0;
     const porcientoAnterior = await this.utils.getPorcientoPeriodoAnterior(
       mes,
-      year-1,
+      year - 1,
     );
 
     if (porcientoAnterior.length > 0) {
@@ -932,15 +943,345 @@ export class ExportService {
     rowIndex += 2;
   }
 
-// Exportar pdf de trabajadores interruptos 
+  // Exportar pdf de trabajadores interruptos
 
-public async getInterruptosPDF(ueb: string, fecha: string, res: Response): Promise<void> {
+  public async getInterruptosPDF(ueb: string, fecha: string): Promise<Buffer> {
+    const interruptosData =
+      await this.ausenciasService.cantTrabajadoresInterruptos(
+        Number(ueb),
+        fecha,
+      );
+    return await this.generateInterruptosPDF(interruptosData, ueb, fecha);
+  }
 
+  async generateInterruptosPDF(
+    data: any,
+    ueb: string,
+    fecha: string,
+  ): Promise<any> {
+    //console.log("111111");
+    applyPlugin(jsPDF);
+    const doc = new jsPDF('landscape');
+    let yPosition = 10;
 
+    // Estilo base
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
 
+    // Encabezado
+    doc.setFontSize(16);
+    doc.text('Trabajadores Interruptos', 14, yPosition);
+    doc.setFontSize(12);
+    doc.text(`Fecha: ${fecha}`, doc.internal.pageSize.width - 60, yPosition);
+    yPosition += 15;
 
-}
+    if (data.interruptos) {
+      // Caso para UEB específica
+      console.log('me ejecuto');
+      this.addUEBSection(doc, ueb, data.interruptos, data, yPosition);
+    } else {
+      // Caso para todas las UEB
+      yPosition = this.addUebTable(
+        doc,
+        data.interruptosAica,
+        'AICA',
+        data.totales.AICA,
+        yPosition,
+      );
+      yPosition = this.addUebTable(
+        doc,
+        data.interruptosLiorad,
+        'Liorad',
+        data.totales.Liorad,
+        yPosition,
+      );
+      yPosition = this.addUebTable(
+        doc,
+        data.interruptosJT,
+        'Julio Trigo',
+        data.totales.JT,
+        yPosition,
+      );
+      yPosition = this.addUebTable(
+        doc,
+        data.interruptosCitox,
+        'Citox',
+        data.totales.CITOX,
+        yPosition,
+      );
+      yPosition = this.addUebTable(
+        doc,
+        data.interruptosSH,
+        'SH+',
+        data.totales.SH,
+        yPosition,
+      );
 
+      // Totales generales
+      yPosition += 10;
+      doc.setFontSize(14);
+      doc.text('Totales Generales', 14, yPosition);
+      yPosition += 8;
+      console.log('añado totales generales');
+      this.addTotalTable(doc, data.totalesInt, yPosition);
+    }
+    console.log('voy a hacer el return');
+    const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
+    return pdfBuffer;
+  }
 
- 
+  private addUEBSection(
+    doc: jsPDF,
+    ueb: string,
+    interruptos: any[],
+    data: any,
+    y: number,
+  ): number {
+    doc.setFontSize(14);
+    doc.text(`UEB: ${ueb}`, 14, y);
+    y += 8;
+
+    // Cabecera de tabla
+    const headers = [
+      'Dirección',
+      'Interruptos por Covid',
+      'Interruptos por Reubicación',
+      'Producción 100%',
+      'Producción 60%',
+    ];
+
+    // Datos
+    const rows = interruptos.map((item: any) => [
+      item.Direccion,
+      item.covid.toString(),
+      item.reubicados.toString(),
+      item.produccion25.toString(),
+      item.produccion48.toString(),
+    ]);
+
+    console.log('2222222');
+    // Añadir tabla
+    (doc as any).autoTable({
+      startY: y,
+      head: [headers],
+      body: rows,
+      theme: 'grid',
+      styles: { fontSize: 10 },
+    });
+
+    y = (doc as any).autoTable.previous.finalY + 5;
+
+    // Totales
+    const totals = [
+      [
+        'Total Femenino',
+        data.totalCovid.F,
+        data.totalReub.F,
+        data.totalProd25.F,
+        data.totalProd48.F,
+      ],
+      [
+        'Total Masculino',
+        data.totalCovid.M,
+        data.totalReub.M,
+        data.totalProd25.M,
+        data.totalProd48.M,
+      ],
+      [
+        'Total General',
+        data.totalCovid.Total,
+        data.totalReub.Total,
+        data.totalProd25.Total,
+        data.totalProd48.Total,
+      ],
+    ];
+
+    (doc as any).autoTable({
+      startY: y,
+      body: totals,
+      theme: 'grid',
+      styles: { fontSize: 10, fontStyle: 'bold' },
+    });
+
+    return (doc as any).autoTable.previous.finalY + 10;
+  }
+
+  private addUebTable(
+    doc: jsPDF,
+    data: any[],
+    uebName: string,
+    totals: any,
+    y: number,
+  ): number {
+    doc.setFontSize(14);
+    doc.text(`UEB: ${uebName}`, 14, y);
+    y += 8;
+
+    const headers = [
+      'Dirección',
+      'Interruptos por Covid',
+      'Interruptos por Reubicación',
+      'Producción 100%',
+      'Producción 60%',
+    ];
+
+    const rows = data.map((item: any) => [
+      item.Direccion,
+      item.covid.toString(),
+      item.reubicados.toString(),
+      item.produccion25.toString(),
+      item.produccion48.toString(),
+    ]);
+
+    (doc as any).autoTable({
+      startY: y,
+      head: [headers],
+      body: rows,
+      theme: 'grid',
+      styles: { fontSize: 10 },
+    });
+
+    y = (doc as any).autoTable.previous.finalY + 5;
+
+    // Totales UEB
+    const totalsRows = [
+      [
+        'Total Femenino',
+        totals.Covid.F,
+        totals.Reubic.F,
+        totals.Prod25.F,
+        totals.Prod48.F,
+      ],
+      [
+        'Total Masculino',
+        totals.Covid.M,
+        totals.Reubic.M,
+        totals.Prod25.M,
+        totals.Prod48.M,
+      ],
+      [
+        'Total General',
+        totals.Covid.Total,
+        totals.Reubic.Total,
+        totals.Prod25.Total,
+        totals.Prod48.Total,
+      ],
+    ];
+
+    (doc as any).autoTable({
+      startY: y,
+      body: totalsRows,
+      theme: 'grid',
+      styles: { fontSize: 10, fontStyle: 'bold' },
+    });
+
+    return (doc as any).autoTable.previous.finalY + 15;
+  }
+
+  private addTotalTable(doc: jsPDF, totalesInt: any, y: number): void {
+    const headers = [
+      ' ',
+      'Interruptos por Covid',
+      'Interruptos por Reubicación',
+      'Producción 100%',
+      'Producción 60%',
+    ];
+
+    const totals = [
+      [
+        'Total Femenino',
+        totalesInt.Covid.F,
+        totalesInt.Reubic.F,
+        totalesInt.Prod25.F,
+        totalesInt.Prod48.F,
+      ],
+      [
+        'Total Masculino',
+        totalesInt.Covid.M,
+        totalesInt.Reubic.M,
+        totalesInt.Prod25.M,
+        totalesInt.Prod48.M,
+      ],
+      [
+        'Total General',
+        totalesInt.Covid.Total,
+        totalesInt.Reubic.Total,
+        totalesInt.Prod25.Total,
+        totalesInt.Prod48.Total,
+      ],
+    ];
+
+    (doc as any).autoTable({
+      startY: y,
+      head: [headers],
+      body: totals,
+      theme: 'grid',
+      styles: { fontSize: 10, fontStyle: 'bold' },
+    });
+  }
+
+  public async getClavesAusentismoPDF(
+    codigos: string[],
+    fecha: string,
+    ueb: string,
+  ): Promise<Buffer> {
+    const interruptosData =
+      await this.ausenciasService.trabPorClaves(
+        codigos,
+        ueb,
+        fecha,
+      );
+    return await this.generateClavesAusentismoPDF(interruptosData);
+  }
+
+  generateClavesAusentismoPDF(data: ClaveAusentismo[]){
+    const doc = new jsPDF('p', 'mm', 'a4');
+    let yPosition = 20;
+
+    // Establecer estilos iniciales
+    doc.setFont('helvetica');
+    doc.setFontSize(18);
+    doc.setTextColor(33, 37, 41);
+
+    // Título principal
+    doc.text('Claves de Ausentismo', 14, yPosition);
+    yPosition += 15;
+
+    // Configurar tabla
+    const headers = ['Código claves', 'Cantidad de Trabajadores', 'Horas'];
+
+    const rows = data.map((clave) => [
+      clave.CLAVE,
+      clave.CANTIDAD.toString(),
+      clave.HORAS.toString(),
+    ]);
+
+    // Añadir tabla
+    (doc as any).autoTable({
+      startY: yPosition,
+      head: [headers],
+      body: rows,
+      theme: 'grid',
+      styles: {
+        fontSize: 10,
+        cellPadding: 3,
+        halign: 'center',
+        valign: 'middle',
+      },
+      headStyles: {
+        fillColor: [41, 128, 185],
+        textColor: 255,
+        fontStyle: 'bold',
+      },
+      columnStyles: {
+        0: { halign: 'left', cellWidth: 60 },
+        1: { cellWidth: 60 },
+        2: { cellWidth: 50 },
+      },
+    });
+
+    // Generar y enviar PDF
+    const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
+    return pdfBuffer;
+  }
 }

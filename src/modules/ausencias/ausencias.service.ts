@@ -26,29 +26,13 @@ export class AusenciasService {
     //this.utils.setBaseUri(this.baseUri);
   }
 
-  // Listar cantidad de trabajadores por clave de ausentismo
+ /*  // Listar cantidad de trabajadores por clave de ausentismo
   public async listAusentismoClaves(ueb: string, fecha: string) {
-    if (!ueb || !fecha) {
-      throw new InternalServerErrorException(
-        'Los parámetros UEB y fecha son obligatorios.',
-      );
-    }
-
-    const fechaRegex = /^\d{4}-\d{2}$/; // Formato YYYY-MM
-    if (!fechaRegex.test(fecha)) {
-      throw new InternalServerErrorException(
-        'El formato de la fecha debe ser YYYY-MM.',
-      );
-    }
+    
 
     try {
-      this.logger.log(
-        `Solicitando claves de ausentismo para UEB: ${ueb}, Fecha: ${fecha}`,
-      );
-      const client = axios.create({ baseURL: 'http://example.com/api' });
-
-      const trabajadores = await client.get(
-        `/recursosHumanos/ausentismoClaves?ueb=${ueb}&fecha=${fecha}`,
+      const trabajadores = await axios.get(
+        `${this.baseUri}/recursosHumanos/ausentismoClaves?ueb=${ueb}&fecha=${fecha}`,
       );
 
       if (!trabajadores.data || !Array.isArray(trabajadores.data)) {
@@ -57,12 +41,12 @@ export class AusenciasService {
         );
       }
 
-      this.logger.log(
+      console.log(
         `Respuesta obtenida: ${JSON.stringify(trabajadores.data)}`,
       );
       return trabajadores.data;
     } catch (error) {
-      this.logger.error(
+      console.error(
         `Error al obtener claves de ausentismo: ${error.message}`,
       );
 
@@ -81,7 +65,65 @@ export class AusenciasService {
       }
     }
   }
+ */
+  public async trabPorClaves(
+    codigos: string[],
+    fecha: string,
+    ueb: string,
+  ) {
+    this.getBaseUri();
+    const uebName = this.getUEBByCode(ueb);
+    const normalizedUebName = uebName === 'Julio Trigo' ? 'JT' : uebName.toUpperCase();
 
+    const clavesCount = await this.getTrabCountClaves(codigos, fecha);
+    let clavesRes = [];
+    let found = false;
+    let i = 0;
+
+    while (i < clavesCount.length && !found) {
+      if (clavesCount[i].UEB === normalizedUebName) {
+        found = true;
+        clavesRes = clavesCount[i].CLAVES;
+      }
+      i++;
+    }
+
+    return clavesRes;
+  }
+  private getUEBByCode(ueb: string): string {
+    const uebMap: { [key: string]: string } = {
+      '16': 'AICA',
+      '25': 'LIORAD',
+      '55': 'JT',
+      '100': 'CITOX',
+      '57': 'SH',
+    };
+    return uebMap[ueb] || 'Unknown UEB';
+  }
+  public async getTrabCountClaves(codigos: string[], fecha: string): Promise<any[]> {
+
+    const codigosJson = codigos.map((codigo) => ({ ClvCod: codigo }));
+    const [mes, anno] = fecha.split('-');
+
+    try {
+      const response = await axios.post(
+        `${this.baseUri}/recursosHumanos/clavesAusentismo`, // URL completa
+        {
+          Mes: mes,
+          Anno: anno,
+          Claves: codigosJson,
+        },
+        {
+          headers: { 'Content-Type': 'application/json' }, // Encabezados
+        },
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error(error);
+      throw new InternalServerErrorException('Error al obtener claves de ausentismo.');
+    }
+  }
   // Listar trabajadores interruptos dados fecha y ueb
   /*   public async listTrabajadoresInterruptos(ueb: string, fecha: string) {
     
