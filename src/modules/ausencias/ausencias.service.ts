@@ -72,22 +72,33 @@ export class AusenciasService {
     ueb: string,
   ) {
     this.getBaseUri();
+    console.log('Parámetros recibidos en trabPorClaves:', {
+      codigos,
+      fecha,
+      ueb,
+    });
     const uebName = this.getUEBByCode(ueb);
+    console.log('Valor de uebName:', uebName);
     const normalizedUebName = uebName === 'Julio Trigo' ? 'JT' : uebName.toUpperCase();
-
+    console.log('Valor de normalizedUebName:', normalizedUebName);
     const clavesCount = await this.getTrabCountClaves(codigos, fecha);
-    let clavesRes = [];
+    console.log('Datos devueltos por getTrabCountClaves:', clavesCount);
+    let clavesRes:any = [];
     let found = false;
     let i = 0;
 
     while (i < clavesCount.length && !found) {
+      console.log(`Comparando: ${clavesCount[i].UEB} === ${normalizedUebName}`);
       if (clavesCount[i].UEB === normalizedUebName) {
+        console.log("yep");
         found = true;
         clavesRes = clavesCount[i].CLAVES;
       }
+      console.log("nope");
       i++;
     }
 
+    console.log('Resultado final de trabPorClaves:', clavesRes);
     return clavesRes;
   }
   private getUEBByCode(ueb: string): string {
@@ -96,7 +107,7 @@ export class AusenciasService {
       '25': 'LIORAD',
       '55': 'JT',
       '100': 'CITOX',
-      '57': 'SH',
+      '57': 'SH+',
     };
     return uebMap[ueb] || 'Unknown UEB';
   }
@@ -343,7 +354,7 @@ export class AusenciasService {
     producc48: Interrupto[],
   ): InterruptosEntry[] {
     return direcciones.map((dir) => {
-      const codigoDir = dir.Area[0].EstNV1;
+      const codigoDir = dir.Area?.[0]?.EstNV1 || null;
       return {
         Direccion: dir.Unidad.trim(),
         covid: this.buscarInterrupto(codigoDir, covid),

@@ -39,7 +39,9 @@ export class AusenciasController {
         HttpStatus.BAD_REQUEST,
       );
     }
-    return this.ausenciasService.trabPorClaves(codigos,date, ueb);
+    const result = await this.ausenciasService.trabPorClaves(codigos,date, ueb);
+    console.log(result);
+    return res.status(HttpStatus.OK).json(result);
   }
 
   @Post('filtrar')
@@ -65,6 +67,6 @@ export class AusenciasController {
         HttpStatus.BAD_REQUEST,
       );
     }
-    return this.ausenciasService.cantTrabajadoresInterruptos(ueb, fecha);
+    return await this.ausenciasService.cantTrabajadoresInterruptos(ueb, fecha);
   }
 }

@@ -1225,12 +1225,19 @@ export class ExportService {
     fecha: string,
     ueb: string,
   ): Promise<Buffer> {
+    console.log('Parámetros recibidos en getClavesAusentismoPDF:', {
+      codigos,
+      fecha,
+      ueb,
+    });
+
     const interruptosData =
       await this.ausenciasService.trabPorClaves(
         codigos,
-        ueb,
         fecha,
+        ueb,
       );
+    console.log(interruptosData);
     return await this.generateClavesAusentismoPDF(interruptosData);
   }
 
@@ -1238,6 +1245,7 @@ export class ExportService {
     const doc = new jsPDF('p', 'mm', 'a4');
     let yPosition = 20;
 
+    console.log(data);
     // Establecer estilos iniciales
     doc.setFont('helvetica');
     doc.setFontSize(18);
