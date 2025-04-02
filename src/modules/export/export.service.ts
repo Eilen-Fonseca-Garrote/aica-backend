@@ -935,81 +935,10 @@ export class ExportService {
 // Exportar pdf de trabajadores interruptos 
 
 public async getInterruptosPDF(ueb: string, fecha: string, res: Response): Promise<void> {
-  try {
-    // Validar y procesar la fecha
-    const [mes, anno] = fecha.split('-');
-    if (!mes || !anno) {
-      throw new InternalServerErrorException('El formato de la fecha debe ser MM-YYYY.');
-    }
 
-    const client = axios.create({ baseURL: 'http://example.com/api' }); // Cambia la URL base según tu configuración
-    let interruptos: { direcciones: any; interruptosReub: any } | null = null;  //permitido obtener objeto o null
-    let totales = {};
 
-    // Obtener datos según la UEB
-    if (ueb === '0') {
-      // Obtener datos para todas las UEBs
-      const direccionesAica = await client.get('/recursosHumanos/direccionesUEB?ueb=16');
-      const interruptosReub = await client.get(`/recursosHumanos/interruptoReubicacion?ueb=16&mes=${mes}&anno=${anno}`);
-      const totalReub = this.calcularTotal(interruptosReub.data);
 
-      // Agrega más llamadas a la API según sea necesario
-      totales['AICA'] = { Reubic: totalReub };
-    } else {
-      // Obtener datos para una UEB específica
-      const direcciones = await client.get(`/recursosHumanos/direccionesUEB?ueb=${ueb}`);
-      const interruptosReub = await client.get(`/recursosHumanos/interruptoReubicacion?ueb=${ueb}&mes=${mes}&anno=${anno}`);
-      const totalReub = this.calcularTotal(interruptosReub.data);
 
-      interruptos = {
-        direcciones: direcciones.data,
-        interruptosReub: interruptosReub.data,
-      };
-
-      totales = { Reubic: totalReub };
-    }
-
-    // Crear el PDF usando jsPDF
-    const doc = new jsPDF();
-
-    // Título
-    doc.setFontSize(16);
-    doc.text('Reporte de Trabajadores Interruptos', 10, 10);
-
-    // Información general
-    doc.setFontSize(12);
-    doc.text(`UEB: ${ueb === '0' ? 'Todas' : ueb}`, 10, 20);
-    doc.text(`Fecha: ${fecha}`, 10, 30);
-
-    // Totales
-    doc.text('Totales:', 10, 40);
-    let y = 50;
-    for (const [key, value] of Object.entries(totales)) {
-      doc.text(`${key}: ${JSON.stringify(value)}`, 10, y);
-      y += 10;
-    }
-
-    // Detalles de interruptos
-    if (interruptos) {
-      doc.text('Detalles de Interruptos:', 10, y);
-      y += 10;
-      doc.text(JSON.stringify(interruptos, null, 2), 10, y);
-    }
-
-    // Enviar el PDF como respuesta
-    const pdfBuffer = doc.output('arraybuffer');
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=Interruptos_${fecha}.pdf`);
-    res.send(Buffer.from(pdfBuffer));
-  } catch (error) {
-    this.logger.error(`Error al generar el PDF: ${error.message}`);
-    throw new InternalServerErrorException('Error al generar el PDF.');
-  }
-}
-
-private calcularTotal(data: any): number {
-  // Simula el cálculo de totales
-  return data.reduce((acc, item) => acc + (item.cantidad || 0), 0);
 }
 
 
