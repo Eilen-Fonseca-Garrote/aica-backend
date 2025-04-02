@@ -160,3 +160,8 @@ describe('AusenciasService', () => {
     });
   });
 });
+
+
+
+// hacer una prueba de caja blanca, escoger un metodo que tenga condicionales 
+//para poder hacer el metodo de la caja blanca de condicionales que es el mas sencillo

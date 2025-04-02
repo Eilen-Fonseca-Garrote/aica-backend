@@ -667,4 +667,6 @@ describe('ExportService - ModeloRL4', () => {
 
 
 //  casos de prueba de esta forma con gpt para mis funcionalidades 
-// en cada funcionalidad, una prueba de rendimiento
+// en cada funcionalidad, una prueba de caja negra 
+//mostrar  los pdf cde como deberia quedar
+//otro pdf de como quedo
