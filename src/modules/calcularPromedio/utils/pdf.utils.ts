@@ -1,7 +1,8 @@
 import { Response } from 'express';
-import PDFDocument from 'pdfkit';
+import jsPDF from 'jspdf';
 import { Injectable } from '@nestjs/common';
-// pdf.util.ts
+import 'jspdf-autotable';
+
 export interface PromedioItem {
   HPromMuj: number;
   HPromFMuj: number;
@@ -48,199 +49,192 @@ export interface TotalDiario {
 export interface PromedioRangoResponse {
   success: boolean;
   promedio: PromedioDiario[];
-  total: TotalDiario;
+  total: TotalDiario[];
   fecha: string;
   ueb: string;
   direcc: string;
 }
 
+export interface PromedioMensual {
+  HPromMuj: number;
+  HPromFMuj: number;
+  HPromTot: number;
+  Unidad: string;
+  HPromFisic: number;
+}
+
+export interface TotalMensual {
+  totalFisico: number;
+  totalFisicoMuj: number;
+  totalPromedio: number;
+  totalPromedioMujeres: number;
+}
+
+export interface PromedioMensualResponse {
+  success: boolean;
+  promedio: PromedioDiario[];
+  total: TotalDiario[];
+  fecha: string;
+  ueb: string;
+  direcc: string;
+}
+
+
+
 @Injectable()
 export class PromedioPdfUtil {
   static async exportPromedioMensualPdf(
     data: {
-      promedio: Array<{
-        HPromMuj: number;
-        HPromFMuj: number;
-        HPromTot: number;
-        Unidad: string;
-        HPromFisic: number;
-      }>;
-      total: Array<{
-        totalFisico: number;
-        totalFisicoMuj: number;
-        totalPromedio: number;
-        totalPromedioMujeres: number;
-      }>;
+      promedio: PromedioMensual[];
+      total: TotalMensual[];
       clave26: number;
     },
     res: Response
   ): Promise<void> {
-    const reportData = this.normalizeData(data);
-    const doc = new PDFDocument({ margin: 30, size: 'A4' });
-
-    // Set response headers
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader(
-      'Content-Disposition',
-      'attachment; filename=reporte-promedio.pdf'
-    );
-
-    doc.pipe(res);
-
+    const doc = new jsPDF();
+  
     // 1. Add Header
-    doc.fontSize(18)
-       .font('Helvetica-Bold')
-       .text('REPORTE DE PROMEDIOS', { align: 'center' })
-       .moveDown(1);
-
-    // 2. Add Table Header
-    doc.fontSize(10)
-       .fillColor('#444444')
-       .text('UNIDAD', 50, 150)
-       .text('TOTAL FÍSICO', 200, 150)
-       .text('MUJERES', 300, 150)
-       .text('PROMEDIO TOTAL', 400, 150)
-       .moveDown(0.5);
-
-    // 3. Add Table Rows
-    let y = 170;
-    data.promedio.forEach((item) => {
-      doc.font('Helvetica')
-         .fontSize(10)
-         .fillColor('#333333')
-         .text(item.Unidad.trim(), 50, y)
-         .text(item.HPromFisic.toString(), 200, y)
-         .text(item.HPromFMuj.toString(), 300, y)
-         .text(item.HPromTot.toString(), 400, y);
-      
-      y += 25;
-      if (y > 700) {  // Add new page if needed
-        doc.addPage();
-        y = 100;
-      }
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('REPORTE DE PROMEDIOS MENSUALES', 105, 20, { align: 'center' });
+  
+    // 2. Prepare table data
+    const tableData = data.promedio.map(item => [
+      item.Unidad.trim(),
+      item.HPromFisic.toString(),
+      item.HPromFMuj.toString(),
+      item.HPromMuj.toString(),
+      item.HPromTot.toString()
+    ]);
+  
+    // 3. Add Main Table
+    (doc as any).autoTable({
+      startY: 30,
+      head: [['UNIDAD', 'FÍSICO TOTAL', 'MUJERES (FÍSICO)', 'MUJERES (PROMEDIO)', 'PROMEDIO TOTAL']],
+      body: tableData,
+      headStyles: {
+        fillColor: [68, 68, 68],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold'
+      },
+      styles: {
+        font: 'helvetica',
+        fontSize: 9
+      },
+      columnStyles: {
+        0: { cellWidth: 60 },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 30 },
+        4: { cellWidth: 30 }
+      },
+      margin: { left: 10 }
     });
-
-    // 4. Add Totals
+  
+    // 4. Add Totals Section - NOW VERTICALLY ALIGNED
     if (data.total.length > 0) {
       const totals = data.total[0];
-      doc.moveDown(2)
-         .font('Helvetica-Bold')
-         .text('TOTALES GENERALES:', 50, doc.y)
-         .moveDown(0.5)
-         .font('Helvetica')
-         .text(`Total Físico: ${totals.totalFisico}`, 50, doc.y)
-         .text(`Total Mujeres: ${totals.totalFisicoMuj}`, 200, doc.y)
-         .text(`Promedio Total: ${totals.totalPromedio}`, 350, doc.y)
-         .text(`Promedio Mujeres: ${totals.totalPromedioMujeres}`, 500, doc.y);
+      const finalY = (doc as any).lastAutoTable.finalY + 20; // Extra space
+      
+      doc.setFont('helvetica', 'bold');
+      doc.text('TOTALES GENERALES:', 20, finalY);
+      
+      doc.setFont('helvetica', 'normal');
+      let currentY = finalY + 10; // Start 10 units below the title
+      
+      doc.text(`• Físico Total: ${totals.totalFisico}`, 30, currentY);
+      currentY += 8; // Move down for next line
+      
+      doc.text(`• Mujeres (Físico): ${totals.totalFisicoMuj}`, 30, currentY);
+      currentY += 8;
+      
+      doc.text(`• Promedio Total: ${totals.totalPromedio}`, 30, currentY);
+      currentY += 8;
+      
+      doc.text(`• Mujeres (Promedio): ${totals.totalPromedioMujeres}`, 30, currentY);
     }
-
+  
     // 5. Add Footer
-    doc.fontSize(8)
-       .text(`Clave 26: ${data.clave26 === 1 ? 'APLICA' : 'NO APLICA'}`, 50, 750, {
-         align: 'left'
-       })
-       .text(`Generado el: ${new Date().toLocaleDateString()}`, 50, 750, {
-         align: 'right'
-       });
-
-    doc.end();
+    doc.setFontSize(8);
+    doc.text(`Clave 26: ${data.clave26 === 1 ? 'APLICA' : 'NO APLICA'}`, 20, 285);
+    doc.text(`Generado el: ${new Date().toLocaleDateString()}`, 160, 285, { align: 'right' });
+  
+    // Send PDF
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=reporte-promedio-mensual.pdf');
+    res.send(Buffer.from(doc.output('arraybuffer')));
   }
 
   static async exportPromedioDiarioPdf(data: PromedioRangoResponse, res: Response): Promise<void> {
-    const doc = new PDFDocument({ margin: 30, size: 'A4', layout: 'landscape' });
-    
-    // Set response headers
+    const doc = new jsPDF('landscape');
+
+    // Add header
+    this.addHeaderReporteDiario(doc, data);
+
+    // Prepare table data
+    const tableData = data.promedio.map(item => [
+      item.Fecha,
+      item.HPDTT.toString(),
+      item.HPDTM.toString(),
+      item.Unidad.trim()
+    ]);
+
+    // Add daily table
+    (doc as any).autoTable({
+      startY: 40,
+      head: [['Fecha', 'Total', 'Mujeres', 'Unidad']],
+      body: tableData,
+      headStyles: {
+        fillColor: [68, 68, 68],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold'
+      },
+      styles: {
+        font: 'helvetica',
+        fontSize: 10
+      },
+      columnStyles: {
+        0: { cellWidth: 50 },
+        1: { cellWidth: 40 },
+        2: { cellWidth: 40 },
+        3: { cellWidth: 60 }
+      }
+    });
+
+    // Add totals
+    console.log("asd", data)
+    if (data.total.length > 0) {
+      const finalY = (doc as any).lastAutoTable.finalY + 15;
+      this.addTotalsReporteMensaul(doc, data.total[0], finalY);
+    }
+
+    // Set response headers and send PDF
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
       'Content-Disposition',
       `attachment; filename=promedio-diario-${data.fecha.replace(/-/g, '')}.pdf`
     );
-
-    doc.pipe(res);
-
-    // Add header
-    this.addHeader(doc, data);
-
-    // Add daily table
-    this.addDailyTable(doc, data);
-
-    // Add totals
-    console.log("data", data)
-    this.addTotals(doc, data.total);
-
-    doc.end();
+    res.send(Buffer.from(doc.output('arraybuffer')));
   }
 
-  private static addHeader(doc: PDFDocument, data: PromedioRangoResponse) {
-    doc.fontSize(16)
-       .font('Helvetica-Bold')
-       .text(`REPORTE DIARIO DE PROMEDIOS - ${data.ueb}`, { align: 'center' })
-       .moveDown(0.5);
+  private static addHeaderReporteDiario(doc: jsPDF, data: PromedioRangoResponse) {
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`REPORTE DIARIO DE PROMEDIOS - ${data.ueb}`, 140, 15, { align: 'center' });
 
-    doc.fontSize(12)
-       .font('Helvetica')
-       .text(`Período: ${data.fecha}`, { align: 'center' })
-       .text(`Unidad: ${data.direcc.trim()}`, { align: 'center' })
-       .moveDown(1);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Período: ${data.fecha}`, 140, 25, { align: 'center' });
+    doc.text(`Unidad: ${data.direcc.trim()}`, 140, 30, { align: 'center' });
   }
 
-  private static addDailyTable(doc: PDFDocument, data: PromedioRangoResponse) {
-    // Table header
-    doc.font('Helvetica-Bold')
-       .fontSize(10)
-       .fillColor('#444444')
-       .text('Fecha', 50, 120)
-       .text('Total', 150, 120)
-       .text('Mujeres', 250, 120)
-       .text('Unidad', 350, 120)
-       .moveDown(0.5);
-
-    // Table rows
-    let y = 140;
-    doc.font('Helvetica')
-       .fontSize(10)
-       .fillColor('#333333');
-
-    data.promedio.forEach(item => {
-      doc.text(item.Fecha, 50, y)
-         .text(item.HPDTT.toString(), 150, y)
-         .text(item.HPDTM.toString(), 250, y)
-         .text(item.Unidad.trim(), 350, y);
-      y += 20;
-      
-      // Add page break if needed
-      if (y > 500) {
-        doc.addPage();
-        y = 100;
-        this.addHeader(doc, data);
-      }
-    });
-  }
-
-  private static addTotals(doc: PDFDocument, total: TotalDiario) {
-    doc.font('Helvetica-Bold')
-       .fontSize(12)
-       .text('TOTALES GENERALES:', 50, doc.y + 20)
-       .font('Helvetica')
-       .text(`Promedio Total: ${total[0].Promedio}`, 200, doc.y)
-       .text(`Promedio Mujeres: ${total[0].PromedioMujeres}`, 400, doc.y);
-  }
-
-  private static normalizeData(data: PromedioReport | PromedioGeneralReport): PromedioReport {
-    // Handle case when promedio is null (from PromedioGeneralReport)
-    if (data.promedio === null && 'promedioAica' in data) {
-      return {
-        promedio: [], // Or transform promedioAica/etc into PromedioItem[]
-        total: data.total || [],
-        clave26: data.clave26
-      };
-    }
+  private static addTotalsReporteMensaul(doc: jsPDF, total: TotalDiario, yPosition: number) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('TOTALES GENERALES:', 20, yPosition);
     
-    // Default case (PromedioReport)
-    return {
-      promedio: data.promedio || [],
-      total: data.total || [],
-      clave26: data.clave26
-    };
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Promedio Total: ${total.Promedio}`, 20, yPosition + 10);
+    doc.text(`Promedio Mujeres: ${total.PromedioMujeres}`, 20, yPosition + 20);
   }
 }
