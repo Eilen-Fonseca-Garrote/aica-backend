@@ -5,6 +5,8 @@ import * as mysql2 from 'mysql2';
 import * as pgDB from 'pg';
 import { envSchema } from './config/env.schema';
 import { ExportModule } from './modules/export/export.module';
+import { BuscarTrabajadorModule } from './modules/buscarTranajador/buscarTrabajador.module';
+import { CalcularPromedioModule } from './modules/calcularPromedio/calcularPromedio.module';
 import { AusenciasModule } from './modules/ausencias/ausencias.module';
 
 @Module({
@@ -32,6 +34,8 @@ import { AusenciasModule } from './modules/ausencias/ausencias.module';
       
   }),
     ExportModule,
+    BuscarTrabajadorModule,
+    CalcularPromedioModule,
     AusenciasModule,
   ],
   
