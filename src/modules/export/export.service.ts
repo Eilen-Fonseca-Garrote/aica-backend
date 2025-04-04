@@ -994,6 +994,7 @@ export class ExportService {
     return await this.generateInterruptosPDF(interruptosData, ueb, fecha);
   }
 
+  // Exportar PDF de trabajadores interruptos dados fecha y UEB 
   async generateInterruptosPDF(
     data: any,
     ueb: string,
@@ -1260,6 +1261,7 @@ export class ExportService {
     });
   }
 
+  // Exportar pdf de claves de ausentismo
   public async getClavesAusentismoPDF(
     codigos: string[],
     fecha: string,

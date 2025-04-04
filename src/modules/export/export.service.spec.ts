@@ -11,6 +11,7 @@ import {
   UEBModelo14B,
 } from 'src/common/types/model14b.types';
 import { AusentismoData } from 'src/common/types/absenteeism.types';
+import { AusenciasService } from '../ausencias/ausencias.service';
 
 jest.mock('axios');
 
@@ -666,7 +667,139 @@ describe('ExportService - ModeloRL4', () => {
 });
 
 
-//  casos de prueba de esta forma con gpt para mis funcionalidades 
-// en cada funcionalidad, una prueba de caja negra 
 //mostrar  los pdf cde como deberia quedar
 //otro pdf de como quedo
+
+// Prueba de caja negra para la función getClavesAusentismoPDF
+// Esta prueba verifica que la función genere un PDF correctamente
+
+describe('ExportService - getClavesAusentismoPDF', () => {
+  let exportService: ExportService;
+  let ausenciasService: jest.Mocked<AusenciasService>;
+
+  beforeEach(() => {
+    ausenciasService = {
+      trabPorClaves: jest.fn(),
+    } as any;
+
+    exportService = new ExportService(
+      { get: jest.fn() } as any,
+      { setBaseUri: jest.fn() } as any,
+      ausenciasService,
+    );
+  });
+
+  it('debería generar un PDF con las claves de ausentismo', async () => {
+    const mockData = [
+      { CLAVE: '09', CANTIDAD: 10, HORAS: 40 },
+      { CLAVE: '19', CANTIDAD: 5, HORAS: 20 },
+    ];
+
+    ausenciasService.trabPorClaves.mockResolvedValue(mockData);
+
+    const pdfBuffer = await exportService.getClavesAusentismoPDF(
+      ['09', '19'],
+      '03-2025',
+      '16',
+    );
+
+    expect(ausenciasService.trabPorClaves).toHaveBeenCalledWith(
+      ['09', '19'],
+      '03-2025',
+      '16',
+    );
+    expect(pdfBuffer).toBeInstanceOf(Buffer);
+  });
+
+  it('debería manejar datos vacíos', async () => {
+    ausenciasService.trabPorClaves.mockResolvedValue([]);
+
+    const pdfBuffer = await exportService.getClavesAusentismoPDF(
+      ['09', '19'],
+      '03-2025',
+      '16',
+    );
+
+    expect(ausenciasService.trabPorClaves).toHaveBeenCalledWith(
+      ['09', '19'],
+      '03-2025',
+      '16',
+    );
+    expect(pdfBuffer).toBeInstanceOf(Buffer);
+  });
+
+  it('debería lanzar un error si el servicio falla', async () => {
+    ausenciasService.trabPorClaves.mockRejectedValue(
+      new Error('Error en el servicio'),
+    );
+
+    await expect(
+      exportService.getClavesAusentismoPDF(['09', '19'], '03-2025', '16'),
+    ).rejects.toThrow('Error en el servicio');
+  });
+});
+
+// Pruebas de caja negra para la función generateInterruptosPDF
+describe('ExportService - generateInterruptosPDF', () => {
+  let exportService: ExportService;
+
+  beforeEach(() => {
+    exportService = new ExportService(
+      { get: jest.fn() } as any,
+      { setBaseUri: jest.fn() } as any,
+      {} as any,
+    );
+  });
+
+  it('debería generar un PDF con los datos de trabajadores interruptos', async () => {
+    const mockData = {
+      interruptos: [
+        {
+          Direccion: 'Dirección 1',
+          covid: 10,
+          reubicados: 5,
+          produccion25: 3,
+          produccion48: 2,
+        },
+      ],
+      totalCovid: { F: 5, M: 5, Total: 10 },
+      totalReub: { F: 3, M: 2, Total: 5 },
+      totalProd25: { F: 2, M: 1, Total: 3 },
+      totalProd48: { F: 1, M: 1, Total: 2 },
+    };
+
+    const pdfBuffer = await exportService.generateInterruptosPDF(
+      mockData,
+      '16',
+      '03-2025',
+    );
+
+    expect(pdfBuffer).toBeInstanceOf(Buffer);
+  });
+
+  it('debería manejar datos vacíos', async () => {
+    const mockData = {
+      interruptos: [],
+      totalCovid: { F: 0, M: 0, Total: 0 },
+      totalReub: { F: 0, M: 0, Total: 0 },
+      totalProd25: { F: 0, M: 0, Total: 0 },
+      totalProd48: { F: 0, M: 0, Total: 0 },
+    };
+
+    const pdfBuffer = await exportService.generateInterruptosPDF(
+      mockData,
+      '16',
+      '03-2025',
+    );
+
+    expect(pdfBuffer).toBeInstanceOf(Buffer);
+  });
+
+  it('debería lanzar un error si los datos son inválidos', async () => {
+    const invalidData = null;
+
+    await expect(
+      exportService.generateInterruptosPDF(invalidData, '16', '03-2025'),
+    ).rejects.toThrow();
+  });
+});
