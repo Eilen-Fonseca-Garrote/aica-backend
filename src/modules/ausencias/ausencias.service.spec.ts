@@ -183,12 +183,12 @@ describe('Prueba de Caja Blanca para trabPorClaves', () => {
     service = module.get<AusenciasService>(AusenciasService);
     configService = module.get<ConfigService>(ConfigService);
 
-    // Mock de getUEBByCode
+   /* // Mock de getUEBByCode
     jest.spyOn(service, 'getUEBByCode').mockImplementation((code) => {
       if (code === '55') return 'Julio Trigo';
       if (code === '100') return 'CITOX';
       return '';
-    });
+    }); */
 
     // Mock de getTrabCountClaves
     jest.spyOn(service, 'getTrabCountClaves').mockImplementation(async (codigos, fecha) => {
