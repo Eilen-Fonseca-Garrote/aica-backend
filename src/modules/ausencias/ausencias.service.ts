@@ -14,58 +14,25 @@ import {
   TotalInterruptosUEB,
   TotalResult,
 } from 'src/common/types/interruptos.types';
+import { ExportUtilities } from '../export/export.utility';
 
 @Injectable()
 export class AusenciasService {
   private baseUri: string;
   private readonly logger = new Logger(AusenciasService.name);
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly exportUtilities: ExportUtilities, // Inyección de ExportUtilities
+  ) {}
   private getBaseUri() {
     this.baseUri = this.configService.get<string>('SIGERH_BASE_PATH') as string;
     //this.utils.setBaseUri(this.baseUri);
   }
+ 
 
- /*  // Listar cantidad de trabajadores por clave de ausentismo
-  public async listAusentismoClaves(ueb: string, fecha: string) {
-    
 
-    try {
-      const trabajadores = await axios.get(
-        `${this.baseUri}/recursosHumanos/ausentismoClaves?ueb=${ueb}&fecha=${fecha}`,
-      );
-
-      if (!trabajadores.data || !Array.isArray(trabajadores.data)) {
-        throw new InternalServerErrorException(
-          'La respuesta del servicio no es válida.',
-        );
-      }
-
-      console.log(
-        `Respuesta obtenida: ${JSON.stringify(trabajadores.data)}`,
-      );
-      return trabajadores.data;
-    } catch (error) {
-      console.error(
-        `Error al obtener claves de ausentismo: ${error.message}`,
-      );
-
-      if (error.response) {
-        throw new InternalServerErrorException(
-          `Error del servicio externo: ${error.response.status} - ${error.response.data}`,
-        );
-      } else if (error.request) {
-        throw new InternalServerErrorException(
-          'No se pudo conectar al servicio externo.',
-        );
-      } else {
-        throw new InternalServerErrorException(
-          'Error inesperado: ' + error.message,
-        );
-      }
-    }
-  }
- */
+  //Listar cantidad de trabajadores por clave de ausentismo
   public async trabPorClaves(
     codigos: string[],
     fecha: string,
@@ -101,6 +68,8 @@ export class AusenciasService {
     console.log('Resultado final de trabPorClaves:', clavesRes);
     return clavesRes;
   }
+
+  //Obtener nombre de la UEB por el código
   private getUEBByCode(ueb: string): string {
     const uebMap: { [key: string]: string } = {
       '16': 'AICA',
@@ -135,38 +104,9 @@ export class AusenciasService {
       throw new InternalServerErrorException('Error al obtener claves de ausentismo.');
     }
   }
+
+
   // Listar trabajadores interruptos dados fecha y ueb
-  /*   public async listTrabajadoresInterruptos(ueb: string, fecha: string) {
-    
-
-    try {
-      this.logger.log(`Solicitando trabajadores interruptos para UEB: ${ueb}, Fecha: ${fecha}`);
-      const client = axios.create({ baseURL: 'http://example.com/api' });
-
-      const trabajadores = await client.get(
-        `/recursosHumanos/trabajadoresInterruptos?ueb=${ueb}&fecha=${fecha}`,
-      );
-
-      if (!trabajadores.data || !Array.isArray(trabajadores.data)) {
-        throw new InternalServerErrorException('La respuesta del servicio no es válida.');
-      }
-
-      this.logger.log(`Respuesta obtenida: ${JSON.stringify(trabajadores.data)}`);
-      return trabajadores.data;
-    } catch (error) {
-      this.logger.error(`Error al obtener trabajadores interruptos: ${error.message}`);
-
-      if (error.response) {
-        throw new InternalServerErrorException(
-          `Error del servicio externo: ${error.response.status} - ${error.response.data}`,
-        );
-      } else if (error.request) {
-        throw new InternalServerErrorException('No se pudo conectar al servicio externo.');
-      } else {
-        throw new InternalServerErrorException('Error inesperado: ' + error.message);
-      }
-    }
-  } */
 
   async cantTrabajadoresInterruptos(ueb: number, fecha: string): Promise<any> {
     const [mes, anno] = fecha.split('-').map((part) => parseInt(part, 10));

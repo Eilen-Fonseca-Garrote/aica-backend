@@ -161,7 +161,82 @@ describe('AusenciasService', () => {
   });
 });
 
-
-
 // hacer una prueba de caja blanca, escoger un metodo que tenga condicionales 
 //para poder hacer el metodo de la caja blanca de condicionales que es el mas sencillo
+
+describe('Prueba de Caja Blanca para trabPorClaves', () => {
+  let service: AusenciasService;
+  let configService: ConfigService;
+
+  beforeEach(async () => {
+    const mockConfigService = {
+      get: jest.fn().mockReturnValue('http://example.com/api'),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AusenciasService,
+        { provide: ConfigService, useValue: mockConfigService },
+      ],
+    }).compile();
+
+    service = module.get<AusenciasService>(AusenciasService);
+    configService = module.get<ConfigService>(ConfigService);
+
+    // Mock de getUEBByCode
+    jest.spyOn(service, 'getUEBByCode').mockImplementation((code) => {
+      if (code === '55') return 'Julio Trigo';
+      if (code === '100') return 'CITOX';
+      return '';
+    });
+
+    // Mock de getTrabCountClaves
+    jest.spyOn(service, 'getTrabCountClaves').mockImplementation(async (codigos, fecha) => {
+      if (codigos.includes('clave1')) {
+        return [
+          { UEB: 'JT', CLAVES: ['clave1', 'clave2'] },
+          { UEB: 'AICA', CLAVES: ['clave3'] },
+        ];
+      }
+      if (codigos.includes('clave3')) {
+        return [
+          { UEB: 'AICA', CLAVES: ['clave3'] },
+        ];
+      }
+      return [];
+    });
+  });
+
+  // Caso 1: UEB encontrada (Julio Trigo -> JT)
+  it('debería devolver claves cuando la UEB coincide (Julio Trigo)', async () => {
+    const result = await service.trabPorClaves(['clave1', 'clave2'], '03-2025', '55');
+    expect(result).toEqual(['clave1', 'clave2']);
+  });
+
+  // Caso 2: UEB encontrada (otra UEB en mayúsculas)
+  it('debería devolver claves cuando la UEB coincide (otra UEB)', async () => {
+    const result = await service.trabPorClaves(['clave3'], '03-2025', '66');
+    expect(result).toEqual(['clave3']);
+  });
+
+  // Caso 3: UEB no encontrada
+  it('debería devolver array vacío cuando la UEB no coincide', async () => {
+    const result = await service.trabPorClaves(['clave3'], '03-2025', '55');
+    expect(result).toEqual([]);
+  });
+
+  // Caso 4: Sin datos de clavesCount
+  it('debería devolver array vacío cuando no hay datos', async () => {
+    const result = await service.trabPorClaves(['clave99'], '03-2025', '55');
+    expect(result).toEqual([]);
+  });
+
+  // Caso 5: Verificar que el bucle while termina al encontrar la UEB
+  it('debería terminar el bucle cuando encuentra la UEB', async () => {
+    const spyGetTrabCountClaves = jest.spyOn(service, 'getTrabCountClaves');
+    await service.trabPorClaves(['clave1', 'clave2'], '03-2025', '55');
+    
+    // Verificamos que solo se hizo una iteración (porque encuentra JT primero)
+    expect(spyGetTrabCountClaves).toHaveBeenCalledTimes(1);
+  });
+});
