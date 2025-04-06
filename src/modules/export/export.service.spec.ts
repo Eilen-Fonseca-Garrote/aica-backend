@@ -76,6 +76,8 @@ describe('ExportService - ExportAllWorkers', () => {
     // Mock de ExportUtilities
     mockUtils = {
       setBaseUri: jest.fn(),
+      loadMock: jest.fn().mockImplementation((name, folder) => null), 
+      mockFunction: jest.fn(), 
     } as any;
 
     // Instancia del servicio con los mocks
@@ -225,7 +227,11 @@ describe('ExportService - Model14B', () => {
     mockUtils = {
       setBaseUri: jest.fn(),
       getUEBByCode: jest.fn().mockImplementation((code) => `UEB-${code}`),
+      loadMock: jest.fn().mockImplementation((name, folder) => null), 
+      mockFunction: jest.fn(), 
     } as any;
+
+
 
     const mockAusenciasService = {} as any; // Mock for AusenciasService
     service = new ExportService(mockConfigService, mockUtils, mockAusenciasService);
@@ -482,6 +488,8 @@ describe('ExportService - ModeloRL4', () => {
       causasAusentismo: jest.fn(),
       hombresDiasVacaciones: jest.fn(),
       getAltasBajas: jest.fn(),
+      loadMock: jest.fn().mockImplementation((name, folder) => null), 
+      mockFunction: jest.fn(), 
     } as any;
 
     const mockAusenciasService = {} as any; // Mock for AusenciasService

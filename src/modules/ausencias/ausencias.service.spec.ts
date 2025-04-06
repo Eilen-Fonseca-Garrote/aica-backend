@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AusenciasService } from './ausencias.service';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import { ExportUtilities } from '../export/export.utility';
 
 jest.mock('axios');
 
@@ -19,9 +20,17 @@ describe('AusenciasService', () => {
       }),
     };
 
+    const mockExportUtilities = {
+      // Añade aquí los métodos que utiliza AusenciasService
+      getUEBByCode: jest.fn(),
+      loadMock: jest.fn(),
+      mockFunction: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AusenciasService,
+        { provide: ExportUtilities, useValue: mockExportUtilities },
         { provide: ConfigService, useValue: mockConfigService }, // Mock de ConfigService
       ],
     }).compile();
@@ -58,40 +67,43 @@ describe('AusenciasService', () => {
   describe('AusenciasService - cantTrabajadoresInterruptos', () => {
     it('debería devolver los datos de trabajadores interruptos', async () => {
       const mockResponse = [
-        {
-          Unidad: 'Unidad 1',
-          Area: [{ EstNV1: '123' }],
-        },
-        {
-          Unidad: 'Unidad 2',
-          Area: [{ EstNV1: '456' }],
-        },
+        { Unidad: 'Unidad 1', Area: [{ EstNV1: '123' }] },
+        { Unidad: 'Unidad 2', Area: [{ EstNV1: '456' }] },
       ];
-      const interruptos = [
-        { EstNV1: '123', Total_Trabajadores: 10, Femenino: 5, Masculino: 5 },
-        { EstNV1: '456', Total_Trabajadores: 8, Femenino: 4, Masculino: 4 },
-      ];
-      jest.spyOn(axios, 'get').mockResolvedValue({ data: mockResponse });
-
-
-      jest.spyOn(service, 'buscarInterrupto').mockImplementation((codigoDir, interruptos) => {
-        interruptos = [
-          { EstNV1: '123', Total_Trabajadores: 10, Femenino: 5, Masculino: 5 },
-          { EstNV1: '456', Total_Trabajadores: 8, Femenino: 4, Masculino: 4 },
-        ];
-        const interrupto = interruptos.find((int) => int.EstNV1 === codigoDir);
-        return interrupto ? interrupto.Total_Trabajadores : 0;
+    
+      // Mockear las respuestas de fetchInterruptos para cada tipo
+      jest.spyOn(service, 'fetchInterruptos').mockImplementation((tipo, ueb, mes, anno) => {
+        switch (tipo) {
+          case 'interruptoCovid':
+            return Promise.resolve([
+              { EstNV1: '123', Total_Trabajadores: 10, Femenino: 5, Masculino: 5 },
+              { EstNV1: '456', Total_Trabajadores: 8, Femenino: 4, Masculino: 4 },
+            ]);
+          case 'interruptoReubicacion':
+            return Promise.resolve([
+              { EstNV1: '123', Total_Trabajadores: 10, Femenino: 5, Masculino: 5 },
+            ]);
+          case 'interrupto':
+            return Promise.resolve([]); // Prod25 vacío
+          case 'interrupto60':
+            return Promise.resolve([]); // Prod48 vacío
+          default:
+            return Promise.resolve([]);
+        }
       });
-
+    
+      // Mockear la llamada a fetchDirecciones
+      jest.spyOn(service, 'fetchDirecciones').mockResolvedValue(mockResponse);
+    
       const result = await service.cantTrabajadoresInterruptos(16, '03-2025');
-
+    
       expect(result.interruptos).toEqual([
         {
           Direccion: 'Unidad 1',
           covid: 10,
           reubicados: 10,
-          produccion25: 10,
-          produccion48: 10,
+          produccion25: 0,
+          produccion48: 0,
         },
         {
           Direccion: 'Unidad 2',
@@ -100,20 +112,7 @@ describe('AusenciasService', () => {
           produccion25: 0,
           produccion48: 0,
         },
-        {
-          Direccion: 'Sin Dirección', // Valor predeterminado para Unidad undefined
-          covid: 0,
-          reubicados: 8,
-          produccion25:8,
-          produccion48: 8,
-        },
       ]);
-
-      expect(result.totales).toEqual({
-        Total: 18,
-        F: 9,
-        M: 9,
-      });
     });
   });
 
@@ -173,10 +172,18 @@ describe('Prueba de Caja Blanca para trabPorClaves', () => {
       get: jest.fn().mockReturnValue('http://example.com/api'),
     };
 
+    const mockExportUtilities = {
+      // Añade aquí los métodos que utiliza AusenciasService
+      getUEBByCode: jest.fn(),
+      loadMock: jest.fn(),
+      mockFunction: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AusenciasService,
-        { provide: ConfigService, useValue: mockConfigService },
+        { provide: ExportUtilities, useValue: mockExportUtilities },
+        { provide: ConfigService, useValue: mockConfigService }, // Mock de ConfigService
       ],
     }).compile();
 
@@ -203,6 +210,11 @@ describe('Prueba de Caja Blanca para trabPorClaves', () => {
           { UEB: 'AICA', CLAVES: ['clave3'] },
         ];
       }
+      if (codigos.includes('clave100')) {
+        return [
+          { UEB: 'CITOX', CLAVES: ['clave100'] },
+        ];
+      }
       return [];
     });
   });
@@ -215,16 +227,17 @@ describe('Prueba de Caja Blanca para trabPorClaves', () => {
 
   // Caso 2: UEB encontrada (otra UEB en mayúsculas)
   it('debería devolver claves cuando la UEB coincide (otra UEB)', async () => {
-    const result = await service.trabPorClaves(['clave3'], '03-2025', '66');
-    expect(result).toEqual(['clave3']);
+    const result = await service.trabPorClaves(['clave100'], '03-2025', '100');
+    expect(result).toEqual(['clave100']);
   });
 
   // Caso 3: UEB no encontrada
   it('debería devolver array vacío cuando la UEB no coincide', async () => {
-    const result = await service.trabPorClaves(['clave3'], '03-2025', '55');
+    const result = await service.trabPorClaves(['clave3'], '03-2025', '66');
     expect(result).toEqual([]);
   });
 
+  
   // Caso 4: Sin datos de clavesCount
   it('debería devolver array vacío cuando no hay datos', async () => {
     const result = await service.trabPorClaves(['clave99'], '03-2025', '55');

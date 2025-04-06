@@ -209,7 +209,7 @@ export class AusenciasService {
     };
   }
 
-  private async fetchDirecciones(ueb: number): Promise<any[]> {
+  public async fetchDirecciones(ueb: number): Promise<any[]> {
     const response = await axios.get(
       `${this.baseUri}/recursosHumanos/direccionesUEB?ueb=${ueb}`,
     );
@@ -269,7 +269,7 @@ export class AusenciasService {
     };
   }
 
-  private async fetchInterruptos(
+  public async fetchInterruptos(
     tipo: string,
     ueb: number,
     mes: number,
