@@ -29,43 +29,27 @@ export class AusenciasService {
     this.baseUri = this.configService.get<string>('SIGERH_BASE_PATH') as string;
     //this.utils.setBaseUri(this.baseUri);
   }
- 
-
 
   //Listar cantidad de trabajadores por clave de ausentismo
-  public async trabPorClaves(
-    codigos: string[],
-    fecha: string,
-    ueb: string,
-  ) {
+  public async trabPorClaves(codigos: string[], fecha: string, ueb: string) {
     this.getBaseUri();
-    console.log('Parámetros recibidos en trabPorClaves:', {
-      codigos,
-      fecha,
-      ueb,
-    });
     const uebName = this.getUEBByCode(ueb);
-    console.log('Valor de uebName:', uebName);
-    const normalizedUebName = uebName === 'Julio Trigo' ? 'JT' : uebName.toUpperCase();
-    console.log('Valor de normalizedUebName:', normalizedUebName);
+    const normalizedUebName =
+      uebName === 'Julio Trigo' ? 'JT' : uebName.toUpperCase();
     const clavesCount = await this.getTrabCountClaves(codigos, fecha);
-    console.log('Datos devueltos por getTrabCountClaves:', clavesCount);
-    let clavesRes:any = [];
+
+    let clavesRes: any = [];
     let found = false;
     let i = 0;
 
     while (i < clavesCount.length && !found) {
-      console.log(`Comparando: ${clavesCount[i].UEB} === ${normalizedUebName}`);
       if (clavesCount[i].UEB === normalizedUebName) {
-        console.log("yep");
         found = true;
         clavesRes = clavesCount[i].CLAVES;
       }
-      console.log("nope");
       i++;
     }
 
-    console.log('Resultado final de trabPorClaves:', clavesRes);
     return clavesRes;
   }
 
@@ -80,12 +64,22 @@ export class AusenciasService {
     };
     return uebMap[ueb] || 'Unknown UEB';
   }
-  public async getTrabCountClaves(codigos: string[], fecha: string): Promise<any[]> {
-
+  public async getTrabCountClaves(
+    codigos: string[],
+    fecha: string,
+  ): Promise<any[]> {
     const codigosJson = codigos.map((codigo) => ({ ClvCod: codigo }));
     const [mes, anno] = fecha.split('-');
 
     try {
+      const mockFileName = `clavesAusentismo-${mes}-${anno}.json`;
+
+      // Primero intentar cargar el mock
+      const mockData = this.exportUtilities.loadMock(mockFileName, 'trabPorCalves');
+      if (mockData) {
+        return mockData;
+      }
+
       const response = await axios.post(
         `${this.baseUri}/recursosHumanos/clavesAusentismo`, // URL completa
         {
@@ -97,14 +91,19 @@ export class AusenciasService {
           headers: { 'Content-Type': 'application/json' }, // Encabezados
         },
       );
-
+      this.exportUtilities.mockFunction(
+        response.data,
+        `clavesAusentismo-${mes}-${anno}.json`,
+        'trabPorCalves',
+      );
       return response.data;
     } catch (error) {
       console.error(error);
-      throw new InternalServerErrorException('Error al obtener claves de ausentismo.');
+      throw new InternalServerErrorException(
+        'Error al obtener claves de ausentismo.',
+      );
     }
   }
-
 
   // Listar trabajadores interruptos dados fecha y ueb
 
@@ -210,10 +209,25 @@ export class AusenciasService {
   }
 
   public async fetchDirecciones(ueb: number): Promise<any[]> {
-    const response = await axios.get(
-      `${this.baseUri}/recursosHumanos/direccionesUEB?ueb=${ueb}`,
-    );
-    return response.data;
+    const mockFileName = `direccionesUEB-${ueb}.json`;
+    let data;
+
+    const mockData = this.exportUtilities.loadMock(mockFileName, 'cantTrabajadoresInterruptos');
+    if (mockData) {
+      data = mockData;
+    } else {
+      const response = await axios.get(
+        `${this.baseUri}/recursosHumanos/direccionesUEB?ueb=${ueb}`,
+      );
+      this.exportUtilities.mockFunction(
+        response.data,
+        `direccionesUEB-${ueb}.json`,
+        'cantTrabajadoresInterruptos',
+      );
+      data = response.data;
+    }
+
+    return data;
   }
 
   private async procesarUEB(
@@ -275,10 +289,24 @@ export class AusenciasService {
     mes: number,
     anno: number,
   ): Promise<Interrupto[]> {
-    const response = await axios.get(
-      `${this.baseUri}/recursosHumanos/${tipo}?ueb=${ueb}&mes=${mes}&anno=${anno}`,
-    );
-    return response.data;
+    const mockFileName = `${tipo}?ueb=${ueb}&mes=${mes}&anno=${anno}.json`;
+    let data;
+
+    const mockData = this.exportUtilities.loadMock(mockFileName, 'cantTrabajadoresInterruptos');
+    if (mockData) {
+      data = mockData;
+    } else {
+      const response = await axios.get(
+        `${this.baseUri}/recursosHumanos/${tipo}?ueb=${ueb}&mes=${mes}&anno=${anno}`,
+      );
+      this.exportUtilities.mockFunction(
+        response.data,
+        `${tipo}?ueb=${ueb}&mes=${mes}&anno=${anno}.json`,
+        'cantTrabajadoresInterruptos',
+      );
+      data = response.data;
+    }
+    return data;
   }
 
   buscarInterrupto(dir: string, intArray: Interrupto[]): number {

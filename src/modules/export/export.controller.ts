@@ -49,7 +49,7 @@ export class ExportController {
     `attachment; filename=trabajadores(${new Date().toISOString().split('T')[0]}).xlsx`,
   )
   @HttpCode(HttpStatus.CREATED)
-  @Get('reports/excel/all-workers')
+  @Get('excel/all-workers')
   async exportAll() {
     try {
       const buffer = await this.exportService.generateAllWorkersExcel();
@@ -90,7 +90,7 @@ export class ExportController {
     `attachment; filename=modelo14B(${new Date().getMonth() + 1}-${new Date().getFullYear()}).xlsx`,
   )
   @HttpCode(HttpStatus.CREATED)
-  @Get('reports/excel/model14b')
+  @Get('excel/model14b')
   async exportModel14B() {
     try {
       const buffer = await this.exportService.exportModel14B();
@@ -123,7 +123,7 @@ export class ExportController {
   @ApiProduces(
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   ) // Indica que el endpoint produce un Excel
-  @Get('reports/excel/ausentismo')
+  @Get('excel/ausentismo')
   async exportModelAusentismo(
     @Query('noLabDays') noLabDays: string,
     @Query('fechaAusentismo') fechaAusentismo: string,
@@ -194,5 +194,59 @@ export class ExportController {
 
       throw new HttpException(errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  @Header('Content-Type', 'application/pdf')
+@Header('Content-Disposition', `attachment; filename=trabajadores(${new Date().toISOString().split('T')[0]}).pdf`)
+@ApiBody({ type: ClavesDto })
+@Post('pdf/clavesAusentismo')
+async exportAllPdf(@Body() clavesDto: ClavesDto,) {
+  try {
+    const { codigos, date, ueb } = clavesDto;
+    if (!ueb || !date) {
+      throw new HttpException(
+        'Los parámetros UEB y fecha son obligatorios.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const fechaRegex = /^(0[1-9]|1[0-2])-\d{4}$/; // Formato MM-YYYY
+    if (!fechaRegex.test(date)) {
+      throw new HttpException(
+        'Formato de fecha inválido.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const buffer = await this.exportService.getClavesAusentismoPDF(codigos,date, ueb);
+    const stream = new Readable();
+    stream.push(buffer);
+    stream.push(null);
+    return new StreamableFile(stream);
+  } catch (error) {
+    throw new HttpException(
+      'Error al generar el reporte: ' + error.message,
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+  }
+
+}
+  
+@Get('pdf/interruptos')
+  async getInterruptosPDF(
+    @Query('ueb') ueb: string,
+    @Query('fecha') fecha: string,
+    @Res({ passthrough: true }) res: Response,
+  ){
+    const buffer = await this.exportService.getInterruptosPDF(ueb, fecha);
+    const stream = new Readable();
+    stream.push(buffer);
+    stream.push(null);
+  
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=interruptos(${ueb}-${fecha}).pdf`,
+    });
+    return new StreamableFile(stream);
   }
 }
