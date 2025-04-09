@@ -44,10 +44,10 @@ export class AusenciasController {
     return res.status(HttpStatus.OK).json(result);
   }
 
-  @Post('filtrar')
+/*   @Post('filtrar')
   filtrarTrabajadores(@Body() filtersDto: FiltersDto) {
     return this.ausenciasService.obtenerFiltros(filtersDto);
-  }
+  } */
   @Get('interruptos')
   async getTrabajadoresInterruptos(
     @Query('ueb') ueb: number,

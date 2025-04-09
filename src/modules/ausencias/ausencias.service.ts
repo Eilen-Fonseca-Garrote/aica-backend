@@ -72,7 +72,7 @@ export class AusenciasService {
     const [mes, anno] = fecha.split('-');
 
     try {
-      const mockFileName = `clavesAusentismo-${mes}-${anno}.json`;
+      const mockFileName = `clavesAusentismo-${mes}-${anno}-${codigos}.json`;
 
       // Primero intentar cargar el mock
       const mockData = this.exportUtilities.loadMock(mockFileName, 'trabPorCalves');
@@ -93,7 +93,7 @@ export class AusenciasService {
       );
       this.exportUtilities.mockFunction(
         response.data,
-        `clavesAusentismo-${mes}-${anno}.json`,
+        `clavesAusentismo-${mes}-${anno}-${codigos}.json`,
         'trabPorCalves',
       );
       return response.data;
@@ -289,7 +289,7 @@ export class AusenciasService {
     mes: number,
     anno: number,
   ): Promise<Interrupto[]> {
-    const mockFileName = `${tipo}?ueb=${ueb}&mes=${mes}&anno=${anno}.json`;
+    const mockFileName = `${tipo}ueb=${ueb}&mes=${mes}&anno=${anno}.json`;
     let data;
 
     const mockData = this.exportUtilities.loadMock(mockFileName, 'cantTrabajadoresInterruptos');
@@ -301,7 +301,7 @@ export class AusenciasService {
       );
       this.exportUtilities.mockFunction(
         response.data,
-        `${tipo}?ueb=${ueb}&mes=${mes}&anno=${anno}.json`,
+        `${tipo}ueb=${ueb}&mes=${mes}&anno=${anno}.json`,
         'cantTrabajadoresInterruptos',
       );
       data = response.data;
@@ -376,7 +376,7 @@ export class AusenciasService {
   //Filtrar trabajadores por ueb, dirección, área, municipio, reparto, sexo, cantidad de hijos
   //filtrar trabajadores también por grupo sanguíneo, nivel escolar, raza, carrera
 
-  public obtenerFiltros(filters: FiltersDto): Array<[string, string]> {
+/*   public obtenerFiltros(filters: FiltersDto): Array<[string, string]> {
     const resultado: Array<[string, string]> = [];
 
     if (filters.direccionFSelect && filters.uebSelect) {
@@ -435,5 +435,5 @@ export class AusenciasService {
   private getDireccionById(direccionId: string, uebId: string): string {
     // Simula la obtención de la dirección por ID
     return `Dirección Obtenida para ID ${direccionId} y UEB ${uebId}`;
-  }
+  } */
 }
