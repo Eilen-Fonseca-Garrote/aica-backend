@@ -1,23 +1,17 @@
 // export.service.ts
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import * as ExcelJS from 'exceljs';
-import { existsSync, mkdirSync } from 'fs';
-import {
-  DireccionModelo14B,
-  UEBModelo14B,
-} from '../../common/types/model14b.types';
-import { AusentismoData } from '../../common/types/absenteeism.types';
+import { ExportUtilities } from '../export/export.utility';
 import { EntityManager } from 'typeorm';
-import { profile } from 'console';
 
 @Injectable()
 export class CalcularPromedioService {
     private baseUri: string;
     constructor(
       private readonly configService: ConfigService,
-      private readonly entityManager: EntityManager,      
+      private readonly entityManager: EntityManager,
+      private readonly utils: ExportUtilities,      
     ) {
       this.getBaseUri();
     }
@@ -43,6 +37,7 @@ export class CalcularPromedioService {
   
       // Get clave26 (assuming this is a separate service)
       const clave26 = await this.getPromedioByClaveId('26');
+      console.log("clave26", clave26)
       const clave26Restar = clave26[0].restar;
   
       if (ueb === "0") {
@@ -112,13 +107,8 @@ export class CalcularPromedioService {
         }
       }
   
-      try {
-        // Make the API request
-        const response = await axios.get(
-          `${this.baseUri}/recursosHumanos/promTrabajadoresRangoFechas?ueb=${ueb}&direccion=${finalDireccion}&mes=${mes}&fecha=${fecha}`
-        );
-        
-        let promedio = response.data;
+      try {        
+        let promedio = await this.getPromTrabajadoresRangoFechas(ueb, finalDireccion, mes, fecha);
   
         // Apply special processing if direccion is 1
         if (direccion === "1") {
@@ -190,9 +180,16 @@ export class CalcularPromedioService {
 
     private async getFuentePrimaria(entidad: number = 1): Promise<any> {
       try {
-        const response = await axios.get(
+        const mockFileName = `fuentePrimaria_${entidad}.json`;
+      const mockData = this.utils.loadMock(mockFileName, 'calcularPromedio');
+      let response: any;
+      if (mockData) {
+        response = { data: mockData };
+      }
+        response = await axios.get(
           `${this.baseUri}/fuente_primaria/laboratorios?entidad=${entidad}`
         );
+        this.utils.mockFunction(response.data, `fuentePrimaria_${entidad}.json`, 'calcularPromedio')
         const fuentePrimariaSvc = response.data;
     
         const arrayResult: any = {};
@@ -297,9 +294,16 @@ export class CalcularPromedioService {
     
     private async getBajaTrab(ueb: string, mes: string, anno: string): Promise<any> {
       try {
+        const mockFileName = `bajaTrab_${ueb+'_'+mes+'_'+anno}.json`;
+        const mockData = this.utils.loadMock(mockFileName, 'calcularPromedio');
+        if (mockData) {
+          return mockData;
+        }
+      
         const response = await axios.get(
           `${this.baseUri}/recursosHumanos/bajaTrab?ueb=${ueb}&mes=${mes}&anno=${anno}`
         );
+        this.utils.mockFunction(response.data, `bajaTrab_${ueb+'_'+mes+'_'+anno}.json`, 'calcularPromedio')
         return response.data;
       } catch (error) {
         console.error('Error in getBajaTrab:', error);
@@ -309,9 +313,15 @@ export class CalcularPromedioService {
 
     private async getPromTrabajadores(ueb: string, direccion: string, mes: number, anno: string): Promise<any> {
       try {
+        const mockFileName = `promTrabajadores_${ueb+'_'+direccion+'_'+mes+'_'+anno}.json`;
+        const mockData = this.utils.loadMock(mockFileName, 'calcularPromedio');
+        if (mockData) {
+          return mockData;
+        }
         const response = await axios.get(
           `${this.baseUri}/recursosHumanos/promTrabajadores?ueb=${ueb}&direccion=${direccion}&mes=${mes}&anno=${anno}`
         );
+        this.utils.mockFunction(response.data, `promTrabajadores_${ueb+'_'+direccion+'_'+mes+'_'+anno}.json`, 'calcularPromedio')
         return response.data;
       } catch (error) {
         console.error('Error in getPromTrabajadores:', error);
@@ -321,9 +331,15 @@ export class CalcularPromedioService {
     
     private async getFisicoMujeres(ueb: string, mes: string, anno: string): Promise<any> {
       try {
+        const mockFileName =`fisicoMujeres_${ueb+'_'+mes+'_'+anno}.json`;
+        const mockData = this.utils.loadMock(mockFileName, 'calcularPromedio');
+        if (mockData) {
+          return mockData;
+        }
         const response = await axios.get(
           `${this.baseUri}/recursosHumanos/fisicoMujeres?ueb=${ueb}&mes=${mes}&anno=${anno}`
         );
+        this.utils.mockFunction(response.data, `fisicoMujeres_${ueb+'_'+mes+'_'+anno}.json`, 'calcularPromedio')
         return response.data;
       } catch (error) {
         console.error('Error in getFisicoMujeres:', error);
@@ -407,6 +423,25 @@ export class CalcularPromedioService {
         totalPromedioMujeres: total.reduce((sum, item) => sum + (item.totalPromedioMujeres || 0), 0)
       };
     }
+
+    async getPromTrabajadoresRangoFechas(ueb: string, finalDireccion: string, mes: string, fecha: string) {
+      const url =  `${this.baseUri}/recursosHumanos/promTrabajadoresRangoFechas?ueb=${ueb}&direccion=${finalDireccion}&mes=${mes}&fecha=${fecha}`
+      
+      try {
+        const mockFileName = `promTrabajadoresRangoFechas_${ueb+'_'+finalDireccion+'_'+mes+'_'+fecha}.json`;
+        const mockData = this.utils.loadMock(mockFileName, 'calcularPromedio');
+        if (mockData) {
+          return mockData;
+        }
+      
+        const response = await axios.get(url)
+        this.utils.mockFunction(response.data, `promTrabajadoresRangoFechas_${ueb+'_'+finalDireccion+'_'+mes+'_'+fecha}.json`, 'calcularPromedio')
+        return response.data; 
+      } catch (error) {
+        throw new Error(`Error obteniendo datos: ${error.message}`);
+      }
+    }
+    
 
 
 }
