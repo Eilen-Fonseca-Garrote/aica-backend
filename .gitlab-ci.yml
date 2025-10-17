@@ -12,7 +12,7 @@ test:
         - export https_proxy="http://192.168.205.251:3128"
     script:
         - npm install .
-        - npm run test
+        - npm run test:cov
 
 dev:
     stage: deploy
