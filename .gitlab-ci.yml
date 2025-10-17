@@ -1,0 +1,29 @@
+stages:
+    - test
+    - deploy
+
+test:
+    image: node:20-alpine
+    stage: test
+    tags:
+        - personal-api-test
+    before_script:
+        - export HTTP_PROXY="http://192.168.205.251:3128"
+        - export HTTPS_PROXY="http://192.168.205.251:3128"
+    script:
+        - npm ci
+        - npm run test
+
+dev:
+    stage: deploy
+    tags:
+        - personal-api-development
+    only:
+        - development
+    script:
+        - docker build -t personal-api-development:deployment .
+        - docker container rm personal-api-development -f
+        - docker image rm personal-api-development:latest -f
+        - docker tag personal-api-development:deployment personal-api-development:latest
+        - docker rmi personal-api-development:deployment
+        - docker-compose up -d
