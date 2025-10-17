@@ -11,7 +11,7 @@ test:
         - export proxy="http://192.168.205.251:3128"
         - export https_proxy="http://192.168.205.251:3128"
     script:
-        - npm ci
+        - npm install .
         - npm run test
 
 dev:
