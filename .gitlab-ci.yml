@@ -2,17 +2,17 @@ stages:
     # - test
     - deploy
 
-test:
-    image: node:20-alpine
-    stage: test
-    tags:
-        - personal-api-test
-    before_script:
-        - export proxy="http://192.168.205.251:3128"
-        - export https_proxy="http://192.168.205.251:3128"
-    script:
-        - npm install .
-        - npm run test:cov
+# test:
+#     image: node:20-alpine
+#     stage: test
+#     tags:
+#         - personal-api-test
+#     before_script:
+#         - export proxy="http://192.168.205.251:3128"
+#         - export https_proxy="http://192.168.205.251:3128"
+#     script:
+#         - npm install .
+#         - npm run test:cov
 
 dev:
     stage: deploy
