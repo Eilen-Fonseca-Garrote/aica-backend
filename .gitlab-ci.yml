@@ -8,8 +8,8 @@ test:
     tags:
         - personal-api-test
     before_script:
-        - export HTTP_PROXY="http://192.168.205.251:3128"
-        - export HTTPS_PROXY="http://192.168.205.251:3128"
+        - export proxy="http://192.168.205.251:3128"
+        - export https_proxy="http://192.168.205.251:3128"
     script:
         - npm ci
         - npm run test
