@@ -8,6 +8,17 @@ services:
             context: .
         ports:
             - 9036:3030
+        environment:
+            - APP_PORT=$APP_PORT
+            - DB_DATABASE=$DB_DATABASE
+            - DB_HOST=$DB_HOST
+            - DB_PASSWORD=$DB_PASSWORD
+            - DB_PORT=$DB_PORT
+            - DB_USERNAME=$DB_USERNAME
+            - SIGERH_BASE_PATH=$SIGERH_BASE_PATH
+            - SYNCHRO=$SYNCHRO
+            - NODE_ENV=$NODE_ENV
+            - LDAP_LOGIN_SERVICE=$LDAP_LOGIN_SERVICE
         volumes:
             - /etc/timezone:/etc/timezone:ro
             - /etc/localtime:/etc/localtime:ro
