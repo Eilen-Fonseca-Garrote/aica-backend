@@ -54,8 +54,8 @@ export class CalcularPromedioController {
   @Get('promedioDiarioRango')
   async getPromedioRango(
     @Query('ueb') ueb: string,
-    @Query('direccion') direccion: string,
-    @Query('fecha') fecha: string
+    @Query('fecha') fecha: string,
+    @Query('direccion') direccion: string
   ) {
     const data = await this.promedioService.getPromedioRango(ueb, direccion, fecha);
     

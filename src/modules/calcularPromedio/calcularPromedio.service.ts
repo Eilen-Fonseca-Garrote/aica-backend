@@ -22,7 +22,7 @@ export class CalcularPromedioService {
    
     async getPromedioMensual(ueb: string, fecha: string) {
       // Parse date
-      const [mesStr, anno] = fecha.split('-');
+      const [anno, mesStr] = fecha.split('-');
       const mes = parseInt(mesStr);
       
       // Initialize variables
@@ -82,7 +82,6 @@ export class CalcularPromedioService {
           const clave36 = await this.getFisicoMujeres(ueb, mesStr, anno);
           promedio = this.restaClave36(promedio, clave36);
         }
-  
         total = this.addTotalPromedioMensual(promedio, 0, total, clave26Todas);
   
         return {
@@ -95,6 +94,7 @@ export class CalcularPromedioService {
 
     async getPromedioRango(ueb: string, direccion: string, fecha: string): Promise<any> {
       const [anno, mes] = fecha.split('-');
+      console.log("DIRECCION", direccion)
       let finalDireccion = direccion;
   
       // Handle special cases for UEB 25
@@ -114,7 +114,7 @@ export class CalcularPromedioService {
         if (direccion === "1") {
           promedio = this.getPromedioDirGeneral(promedio);
         }
-  
+        console.log("ASD", promedio)
         const unidad = promedio.length > 0 ? promedio[0].Unidad : "";
         const total = this.getTotalPromedioDiario(promedio);
         const uebName = await this.getUEBByCode(ueb);
@@ -313,14 +313,10 @@ export class CalcularPromedioService {
 
     private async getPromTrabajadores(ueb: string, direccion: string, mes: number, anno: string): Promise<any> {
       try {
-        const mockFileName = `promTrabajadores_${ueb+'_'+direccion+'_'+mes+'_'+anno}.json`;
-        const mockData = this.utils.loadMock(mockFileName, 'calcularPromedio');
-        if (mockData) {
-          return mockData;
-        }
         const response = await axios.get(
           `${this.baseUri}/recursosHumanos/promTrabajadores?ueb=${ueb}&direccion=${direccion}&mes=${mes}&anno=${anno}`
         );
+        console.log(response)
         this.utils.mockFunction(response.data, `promTrabajadores_${ueb+'_'+direccion+'_'+mes+'_'+anno}.json`, 'calcularPromedio')
         return response.data;
       } catch (error) {
@@ -427,15 +423,10 @@ export class CalcularPromedioService {
     async getPromTrabajadoresRangoFechas(ueb: string, finalDireccion: string, mes: string, fecha: string) {
       const url =  `${this.baseUri}/recursosHumanos/promTrabajadoresRangoFechas?ueb=${ueb}&direccion=${finalDireccion}&mes=${mes}&fecha=${fecha}`
       
-      try {
-        const mockFileName = `promTrabajadoresRangoFechas_${ueb+'_'+finalDireccion+'_'+mes+'_'+fecha}.json`;
-        const mockData = this.utils.loadMock(mockFileName, 'calcularPromedio');
-        if (mockData) {
-          return mockData;
-        }
-      
+      try { 
         const response = await axios.get(url)
         this.utils.mockFunction(response.data, `promTrabajadoresRangoFechas_${ueb+'_'+finalDireccion+'_'+mes+'_'+fecha}.json`, 'calcularPromedio')
+        console.log(response)
         return response.data; 
       } catch (error) {
         throw new Error(`Error obteniendo datos: ${error.message}`);
