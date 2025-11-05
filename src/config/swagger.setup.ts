@@ -1,4 +1,5 @@
 import { INestApplication } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 export default function setupSwagger(
@@ -6,6 +7,7 @@ export default function setupSwagger(
   swaggerPath: string,
 ) {
   //const swaggerPassword = app.get(ConfigService).get('SWAGGER_PASSWORD');
+  const swaggerUrl = app.get(ConfigService).get('SWAGGER_URL');
 
   const options = new DocumentBuilder()
     .setTitle('Personal')
@@ -15,7 +17,7 @@ export default function setupSwagger(
 
   options.servers = [
     //{ url: 'http://192.168.205.250:8080/personal' },
-    { url: 'http://localhost:3030' },
+    { url: swaggerUrl },
   ];
   const doc = SwaggerModule.createDocument(app, options);
 

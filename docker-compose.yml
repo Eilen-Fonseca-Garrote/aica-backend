@@ -19,6 +19,7 @@ services:
             - SYNCHRO=$SYNCHRO
             - NODE_ENV=$NODE_ENV
             - LDAP_LOGIN_SERVICE=$LDAP_LOGIN_SERVICE
+            - SWAGGER_URL=$SWAGGER_URL
         volumes:
             - /etc/timezone:/etc/timezone:ro
             - /etc/localtime:/etc/localtime:ro
