@@ -31,7 +31,7 @@ export class CalcularPromedioController {
      return this.promedioService.getPromedioMensual(ueb, fecha);
    }
 
-   @Get('promedioMensualPdf')
+   @Get('promedioMensual/pdf')
   async exportPdf(
     @Query('ueb') ueb: string,
     @Query('fecha') fecha: string,
