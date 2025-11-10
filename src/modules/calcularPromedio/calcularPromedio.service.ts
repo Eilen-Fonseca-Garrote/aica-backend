@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { ExportUtilities } from '../export/export.utility';
 import { EntityManager } from 'typeorm';
+import { any } from 'joi';
 
 @Injectable()
 export class CalcularPromedioService {
