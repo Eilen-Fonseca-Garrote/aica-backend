@@ -168,7 +168,7 @@ describe('CalcularPromedioService', () => {
       const result = await (service as any).getPromedioByClaveId('26');
 
       expect(mockEntityManager.query).toHaveBeenCalledWith(
-        'SELECT * FROM promedio WHERE clave = ?',
+        `SELECT * FROM promedio WHERE clave = $1`,
         ['26']
       );
       expect(result).toEqual(mockResult);
