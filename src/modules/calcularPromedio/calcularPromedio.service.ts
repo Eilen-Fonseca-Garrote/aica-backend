@@ -165,7 +165,7 @@ export class CalcularPromedioService {
       try {
         // Using parameterized query to prevent SQL injection
         const results = await this.entityManager.query(
-          `SELECT * FROM promedio WHERE clave = $1`,
+          `SELECT * FROM promedio WHERE clave = ?`,
           [id]
         );
         
