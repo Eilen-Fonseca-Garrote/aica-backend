@@ -72,14 +72,6 @@ export class AusenciasService {
     const [mes, anno] = fecha.split('-');
 
     try {
-      const mockFileName = `clavesAusentismo-${mes}-${anno}-${codigos}.json`;
-
-      // Primero intentar cargar el mock
-      const mockData = this.exportUtilities.loadMock(mockFileName, 'trabPorCalves');
-      if (mockData) {
-        return mockData;
-      }
-
       const response = await axios.post(
         `${this.baseUri}/recursosHumanos/clavesAusentismo`, // URL completa
         {
@@ -90,12 +82,7 @@ export class AusenciasService {
         {
           headers: { 'Content-Type': 'application/json' }, // Encabezados
         },
-      );
-      this.exportUtilities.mockFunction(
-        response.data,
-        `clavesAusentismo-${mes}-${anno}-${codigos}.json`,
-        'trabPorCalves',
-      );
+      )
       return response.data;
     } catch (error) {
       console.error(error);
@@ -209,24 +196,12 @@ export class AusenciasService {
   }
 
   public async fetchDirecciones(ueb: number): Promise<any[]> {
-    const mockFileName = `direccionesUEB-${ueb}.json`;
-    let data;
 
-    const mockData = this.exportUtilities.loadMock(mockFileName, 'cantTrabajadoresInterruptos');
-    if (mockData) {
-      data = mockData;
-    } else {
+    let data;
       const response = await axios.get(
         `${this.baseUri}/recursosHumanos/direccionesUEB?ueb=${ueb}`,
       );
-      this.exportUtilities.mockFunction(
-        response.data,
-        `direccionesUEB-${ueb}.json`,
-        'cantTrabajadoresInterruptos',
-      );
       data = response.data;
-    }
-
     return data;
   }
 
@@ -289,23 +264,11 @@ export class AusenciasService {
     mes: number,
     anno: number,
   ): Promise<Interrupto[]> {
-    const mockFileName = `${tipo}ueb=${ueb}&mes=${mes}&anno=${anno}.json`;
     let data;
-
-    const mockData = this.exportUtilities.loadMock(mockFileName, 'cantTrabajadoresInterruptos');
-    if (mockData) {
-      data = mockData;
-    } else {
       const response = await axios.get(
         `${this.baseUri}/recursosHumanos/${tipo}?ueb=${ueb}&mes=${mes}&anno=${anno}`,
       );
-      this.exportUtilities.mockFunction(
-        response.data,
-        `${tipo}ueb=${ueb}&mes=${mes}&anno=${anno}.json`,
-        'cantTrabajadoresInterruptos',
-      );
       data = response.data;
-    }
     return data;
   }
 

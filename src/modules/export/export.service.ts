@@ -48,17 +48,7 @@ export class ExportService {
   }
   private async getWorkers(baseUri: string): Promise<any[]> {
     try {
-      const mockFileName = `trabVillar.json`;
-
-      // Primero intentar cargar el mock
-      const mockData = this.utils.loadMock(mockFileName, 'allWorkers');
-      if (mockData) {
-        return mockData.Trabajadores || [];
-      }
-
       const { data } = await axios.get(`${baseUri}/trabVillar`);
-      this.utils.mockFunction(data, `trabVillar.json`, 'allWorkers');
-
       return data.Trabajadores || [];
     } catch (error) {
       console.error('Error en getTrabajadores:', error);
@@ -262,51 +252,31 @@ export class ExportService {
         let direcciones;
         let modelo14B;
 
-        const mockFileNameDirecciones = `direccionesUEB-${ueb}.json`;
-        const mockFileNameModelo14B = `modelo14B-${ueb}.json`;
 
-        // Primero intentar cargar el mock
-        const mockDataDirecciones = this.utils.loadMock(
-          mockFileNameDirecciones,
-          'modelo14b',
-        );
-        const mockDataModelo14B = this.utils.loadMock(
-          mockFileNameModelo14B,
-          'modelo14b',
-        );
-        if (mockDataDirecciones && mockDataModelo14B) {
-          direcciones = mockDataDirecciones;
-          modelo14B = mockDataModelo14B;
-        } else {
-          [direcciones, modelo14B] = await Promise.all([
-            client.get(`/recursosHumanos/direccionesUEB?ueb=${ueb}`),
-            client.get(`/recursosHumanos/modelo14B?ueb=${ueb}`),
-          ]);
-          this.utils.mockFunction(
-            direcciones.data,
-            `direccionesUEB-${ueb}.json`,
-            'modelo14b',
-          );
-          this.utils.mockFunction(
-            modelo14B.data,
-            `modelo14B-${ueb}.json`,
-            'modelo14b',
-          );
-        }
+        [direcciones, modelo14B] = await Promise.all([
+          client.get(`/recursosHumanos/direccionesUEB?ueb=${ueb}`),
+          client.get(`/recursosHumanos/modelo14B?ueb=${ueb}`),
+        ]);
+      
+      //console.log("direcciones: ", direcciones.data['0']);
+            const direccionesData: DireccionModelo14B[] = [direcciones.data['0']].map((dir: any) => {
+        // Normalize Area: convert object with numeric keys into array
+        const areasArray = Array.isArray(dir.Area)
+          ? dir.Area
+          : Object.keys(dir.Area).map(key => dir.Area[key]);
 
-        const direccionesData: DireccionModelo14B[] = direcciones.data.map(
-          (dir: any) => ({
-            Unidad: dir.Unidad.trim(),
-            Area: dir.Area.map((area: any) => ({
-              Area: area.Area.trim(),
-              trabs: modelo14B.data.filter(
-                (trab: any) =>
-                  dir.Unidad.trim() === trab.EstDesc.trim() &&
-                  area.Area.trim() === trab.Expr1.trim(),
-              ),
-            })),
-          }),
-        );
+        return {
+          Unidad: dir.Unidad.trim(),
+          Area: areasArray.map((area: any) => ({
+            Area: area.Area.trim(),
+            trabs: modelo14B.data.filter(
+              (trab: any) =>
+                dir.Unidad.trim() === trab.EstDesc.trim() &&
+                area.Area.trim() === trab.Expr1.trim()
+            ),
+          })),
+        };
+      });
 
         UEBModelo14B.direcciones = direccionesData;
         result.push(UEBModelo14B);
