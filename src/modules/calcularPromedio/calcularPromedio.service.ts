@@ -4,7 +4,6 @@ import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { ExportUtilities } from '../export/export.utility';
 import { EntityManager } from 'typeorm';
-import { any } from 'joi';
 
 @Injectable()
 export class CalcularPromedioService {
@@ -180,7 +179,7 @@ export class CalcularPromedioService {
     }
 
     private async getFuentePrimaria(entidad: number = 1): Promise<any> {
-
+        try{
         let response = await axios.get(
           `${this.baseUri}/fuente_primaria/laboratorios?entidad=${entidad}`
         );
@@ -399,7 +398,7 @@ export class CalcularPromedioService {
       };
     }
 
-    async private getPromTrabajadoresRangoFechas(ueb: string, finalDireccion: string, mes: string, fecha: string) {
+    async getPromTrabajadoresRangoFechas(ueb: string, finalDireccion: string, mes: string, fecha: string) {
       const url =  `${this.baseUri}/recursosHumanos/promTrabajadoresRangoFechas?ueb=${ueb}&direccion=${finalDireccion}&mes=${mes}&fecha=${fecha}`
       
       try { 
