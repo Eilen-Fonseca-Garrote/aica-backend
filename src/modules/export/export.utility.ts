@@ -96,23 +96,21 @@ export class ExportUtilities {
 
   async getPorcientoPeriodoAnterior(mes: string, anno: number): Promise<any[]> {
     try {
-      const query = `
-        SELECT * 
-        FROM porciento_ausentismo 
-        WHERE mes = $1 AND anno = $2
-      `;
+     const query = `
+      SELECT * 
+      FROM porciento_ausentismo 
+      WHERE mes = ? AND anno = ?
+    `;
+    
+    const resultados = await this.entityManager.query(query, [mes, anno]);
 
-      const parameters = [mes, anno];
+    //this.mockFunction(resultados, `porciento-ausentismo-${anno}-${mes}.json`);
 
-      const resultados = await this.entityManager.query(query, parameters);
-
-      this.mockFunction(resultados, `porciento-ausentismo-${anno}-${mes}.json`, "modelorl4");
-
-      return resultados;
-    } catch (error) {
-      throw new Error(`Error en getPorcientoPeriodoAnterior: ${error.message}`);
-    }
+    return resultados;
+  } catch (error) {
+    throw new Error(`Error en getPorcientoPeriodoAnterior: ${error.message}`);
   }
+}
 
   async clavesAusentismo(mes: string, year: number): Promise<any[]> {
     try {
