@@ -95,6 +95,8 @@ export class AusenciasService {
   // Listar trabajadores interruptos dados fecha y ueb
 
   async cantTrabajadoresInterruptos(ueb: number, fecha: string): Promise<any> {
+    console.log('🔍 Iniciando cantTrabajadoresInterruptos:', { ueb, fecha });
+    try {
     const [mes, anno] = fecha.split('-').map((part) => parseInt(part, 10));
     this.getBaseUri();
 
@@ -193,16 +195,25 @@ export class AusenciasService {
       totales,
       totalesInt,
     };
+     } catch (error) {
+        console.error('💥 Error en cantTrabajadoresInterruptos:', error);
+    throw error;
+  }
   }
 
   public async fetchDirecciones(ueb: number): Promise<any[]> {
-
+    console.log('Probando fetchDirecciones:', { ueb });
     let data;
+    try{
       const response = await axios.get(
         `${this.baseUri}/recursosHumanos/direccionesUEB?ueb=${ueb}`,
       );
       data = response.data;
     return data;
+    } catch (error){
+      console.error('💥 Error en fetchDirecciones:', error);
+    throw error;
+    }
   }
 
   private async procesarUEB(
