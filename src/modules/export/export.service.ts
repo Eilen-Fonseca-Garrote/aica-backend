@@ -1304,4 +1304,45 @@ export class ExportService {
     const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
     return pdfBuffer;
   }
+
+// exportar pdf de prueba interruptos
+  
+
+  public async getInterruptosTestPDF():Promise<Buffer> {
+    
+    return await this.generateTestPDF();
+
+  }
+
+async generateTestPdf(): Promise<Buffer> {
+    try {
+      // Crear un PDF simple con jsPDF
+      const doc = new jsPDF();
+      
+      // Agregar contenido de prueba
+      doc.setFontSize(16);
+      doc.text('Reporte de Interruptos -', 20, 20);
+      
+      doc.setFontSize(12);
+      doc.text('Para los datos de la UEB', 20, 40);
+      doc.text('Mientras se soluciona el endpoint real de pdf', 20, 50);
+      
+      doc.text('Datos de ejemplo:', 20, 70);
+      doc.text('- Interruptos por Covid: 3', 20, 80);
+      doc.text('- Interruptos por Reubicación: 7', 20, 90);
+      doc.text('- Interruptos Producción 100%: 18', 20, 100);
+      doc.text('- Interruptos Producción 60%: 3', 20, 110);
+      
+      doc.text('Fecha de generación: ' + new Date().toLocaleDateString(), 20, 130);
+      
+      // Convertir a Buffer
+      const pdfOutput = doc.output();
+      return Buffer.from(pdfOutput, 'binary');
+      
+    } catch (error) {
+      this.logger.error('Error generando PDF :', error);
+      throw new InternalServerErrorException('Error generando PDF de prueba');
+    }
+  }
+
 }

@@ -249,4 +249,21 @@ async exportAllPdf(@Body() clavesDto: ClavesDto,) {
     });
     return new StreamableFile(stream);
   }
+
+@Get('pdf/interruptos-test')
+  async getInterruptosTestPDF( @Res() res: Response,
+  ){
+    const buffer = await this.exportService.getInterruptosTestPDF();
+    const stream = new Readable();
+    stream.push(buffer);
+    stream.push(null);
+  
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=interruptos().pdf`,
+    });
+    return new StreamableFile(stream);
+  }
+
 }
