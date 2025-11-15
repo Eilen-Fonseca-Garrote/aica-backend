@@ -1310,7 +1310,7 @@ export class ExportService {
 
   public async getInterruptosTestPDF():Promise<Buffer> {
     
-    return await this.generateTestPDF();
+    return await this.generateTestPdf();
 
   }
 
