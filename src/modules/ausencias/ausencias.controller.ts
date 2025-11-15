@@ -69,4 +69,29 @@ export class AusenciasController {
     }
     return await this.ausenciasService.cantTrabajadoresInterruptos(ueb, fecha);
   }
+
+  // Agregar endpoint de prueba
+@Get('interruptos-test')
+async testInterruptos() {
+  // Retorna datos de prueba estructurados correctamente
+  return {
+    interruptos: [
+      {
+        Direccion: "Dirección de Prueba",
+        covid: 5,
+        reubicados: 3,
+        produccion25: 10,
+        produccion48: 2
+      }
+    ],
+    totalReub: { Total: 3, F: 1, M: 2 },
+    totalCovid: { Total: 5, F: 2, M: 3 },
+    totalProd25: { Total: 10, F: 6, M: 4 },
+    totalProd48: { Total: 2, F: 1, M: 1 },
+    totales: {},
+    totalesInt: null
+  };
+}
+
+
 }
