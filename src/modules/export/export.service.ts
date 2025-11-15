@@ -1336,8 +1336,8 @@ async generateTestPdf(): Promise<Buffer> {
       doc.text('Fecha de generación: ' + new Date().toLocaleDateString(), 20, 130);
       
       // Convertir a Buffer
-      const pdfOutput = doc.output();
-      return Buffer.from(pdfOutput, 'binary');
+      const pdfOutput =  Buffer.from(doc.output('arraybuffer'));
+    return pdfOutput;
       
     } catch (error) {
       this.logger.error('Error generando PDF :', error);
