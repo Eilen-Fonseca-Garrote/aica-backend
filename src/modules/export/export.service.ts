@@ -1250,60 +1250,75 @@ export class ExportService {
         ueb,
       );
     console.log(interruptosData);
-    return await this.generateClavesAusentismoPDF(interruptosData);
+    //return await this.generateClavesAusentismoPDF(interruptosData);
+      return await this.generateClavesAusentismoPDF(interruptosData, fecha, ueb);
   }
 
-  generateClavesAusentismoPDF(data: ClaveAusentismo[]){
-    const doc = new jsPDF('p', 'mm', 'a4');
-    let yPosition = 20;
+  generateClavesAusentismoPDF(
+  data: ClaveAusentismo[],
+  fecha: string,
+  ueb: string
+) {
+  const doc = new jsPDF('p', 'mm', 'a4');
+  let yPosition = 20;
 
-    console.log(data);
-    // Establecer estilos iniciales
-    doc.setFont('helvetica');
-    doc.setFontSize(18);
-    doc.setTextColor(33, 37, 41);
+  console.log(data);
+  
+  // Establecer estilos iniciales
+  doc.setFont('helvetica');
+  doc.setFontSize(18);
+  doc.setTextColor(33, 37, 41);
 
-    // Título principal
-    doc.text('Claves de Ausentismo', 14, yPosition);
-    yPosition += 15;
+  // Título principal
+  doc.text('Claves de Ausentismo', 14, yPosition);
+  yPosition += 10;
 
-    // Configurar tabla
-    const headers = ['Código claves', 'Cantidad de Trabajadores', 'Horas'];
+  // Subtítulo con UEB y Fecha
+  doc.setFontSize(11);
+  doc.setTextColor(100, 100, 100); // Color gris para el subtítulo
+  doc.text(`UEB: ${ueb} - Fecha: ${fecha}`, 14, yPosition);
+  yPosition += 10;
 
-    const rows = data.map((clave) => [
-      clave.CLAVE,
-      clave.CANTIDAD.toString(),
-      clave.HORAS.toString(),
-    ]);
+  // Restablecer color para la tabla
+  doc.setTextColor(0, 0, 0);
 
-    // Añadir tabla
-    (doc as any).autoTable({
-      startY: yPosition,
-      head: [headers],
-      body: rows,
-      theme: 'grid',
-      styles: {
-        fontSize: 10,
-        cellPadding: 3,
-        halign: 'center',
-        valign: 'middle',
-      },
-      headStyles: {
-        fillColor: [41, 128, 185],
-        textColor: 255,
-        fontStyle: 'bold',
-      },
-      columnStyles: {
-        0: { halign: 'left', cellWidth: 60 },
-        1: { cellWidth: 60 },
-        2: { cellWidth: 50 },
-      },
-    });
+  // Configurar tabla
+  const headers = ['Código claves', 'Cantidad de Trabajadores', 'Horas'];
 
-    // Generar y enviar PDF
-    const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
-    return pdfBuffer;
-  }
+  const rows = data.map((clave) => [
+    clave.CLAVE,
+    clave.CANTIDAD.toString(),
+    clave.HORAS.toString(),
+  ]);
+
+  // Añadir tabla
+  (doc as any).autoTable({
+    startY: yPosition,
+    head: [headers],
+    body: rows,
+    theme: 'grid',
+    styles: {
+      fontSize: 10,
+      cellPadding: 3,
+      halign: 'center',
+      valign: 'middle',
+    },
+    headStyles: {
+      fillColor: [41, 128, 185],
+      textColor: 255,
+      fontStyle: 'bold',
+    },
+    columnStyles: {
+      0: { halign: 'left', cellWidth: 60 },
+      1: { cellWidth: 60 },
+      2: { cellWidth: 50 },
+    },
+  });
+
+  // Generar y enviar PDF
+  const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
+  return pdfBuffer;
+}
 
 // exportar pdf de prueba interruptos
   
