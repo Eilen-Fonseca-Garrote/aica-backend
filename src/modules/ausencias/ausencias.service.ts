@@ -332,6 +332,8 @@ async cantTrabajadoresInterruptos(ueb: string, fecha: string): Promise<any> {
     return result;
   }
 
+}
+
 
 
   
