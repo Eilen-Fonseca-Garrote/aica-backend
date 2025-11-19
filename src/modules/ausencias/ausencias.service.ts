@@ -94,6 +94,7 @@ export class AusenciasService {
 
   
   // Listar trabajadores interruptos dados ueb y fecha 
+
 async cantTrabajadoresInterruptos(ueb: string, fecha: string): Promise<any> {
     const [mes, anno] = fecha.split('-').map((part) => parseInt(part, 10));
     this.getBaseUri();
@@ -113,20 +114,20 @@ async cantTrabajadoresInterruptos(ueb: string, fecha: string): Promise<any> {
     const totales: { [key: string]: { [key: string]: TotalResult } } = {};
     let totalesInt: TotalInterruptosUEB | null = null;
 
-    if (ueb === 0) {
+    if (ueb === '0') {
       // Obtener direcciones para cada UEB
-      const direccionesAica = await this.fetchDirecciones("16");
-      const direccionesLiorad = await this.fetchDirecciones("25");
-      const direccionesJT = await this.fetchDirecciones("55");
-      const direccionesCitox = await this.fetchDirecciones("100");
-      const direccionesSH = await this.fetchDirecciones("57");
+      const direccionesAica = await this.fetchDirecciones('16');
+      const direccionesLiorad = await this.fetchDirecciones('25');
+      const direccionesJT = await this.fetchDirecciones('55');
+      const direccionesCitox = await this.fetchDirecciones('100');
+      const direccionesSH = await this.fetchDirecciones('57');
 
       // Procesar AICA (UEB=16)
       const {
         interruptos: aicaInterruptos,
         totales: aicaTotales,
         ...aicaTotals
-      } = await this.procesarUEB("16", mes, anno, direccionesAica);
+      } = await this.procesarUEB('16', mes, anno, direccionesAica);
       interruptosAica = aicaInterruptos;
       totales['AICA'] = aicaTotales;
       ({ totalReub, totalCovid, totalProd25, totalProd48 } = aicaTotals);
@@ -136,7 +137,7 @@ async cantTrabajadoresInterruptos(ueb: string, fecha: string): Promise<any> {
         interruptos: lioradInterruptos,
         totales: lioradTotales,
         ...lioradTotals
-      } = await this.procesarUEB("25", mes, anno, direccionesLiorad);
+      } = await this.procesarUEB('25', mes, anno, direccionesLiorad);
       interruptosLiorad = lioradInterruptos;
       totales['Liorad'] = lioradTotales;
       ({ totalReub, totalCovid, totalProd25, totalProd48 } = lioradTotals);
@@ -146,7 +147,7 @@ async cantTrabajadoresInterruptos(ueb: string, fecha: string): Promise<any> {
         interruptos: jtInterruptos,
         totales: jtTotales,
         ...jtTotals
-      } = await this.procesarUEB("55", mes, anno, direccionesJT);
+      } = await this.procesarUEB('55', mes, anno, direccionesJT);
       interruptosJT = jtInterruptos;
       totales['JT'] = jtTotales;
       ({ totalReub, totalCovid, totalProd25, totalProd48 } = jtTotals);
@@ -156,7 +157,7 @@ async cantTrabajadoresInterruptos(ueb: string, fecha: string): Promise<any> {
         interruptos: citoxInterruptos,
         totales: citoxTotales,
         ...citoxTotals
-      } = await this.procesarUEB("100", mes, anno, direccionesCitox);
+      } = await this.procesarUEB('100', mes, anno, direccionesCitox);
       interruptosCitox = citoxInterruptos;
       totales['CITOX'] = citoxTotales;
       ({ totalReub, totalCovid, totalProd25, totalProd48 } = citoxTotals);
@@ -166,7 +167,7 @@ async cantTrabajadoresInterruptos(ueb: string, fecha: string): Promise<any> {
         interruptos: shInterruptos,
         totales: shTotales,
         ...shTotals
-      } = await this.procesarUEB("57", mes, anno, direccionesCitox);
+      } = await this.procesarUEB('57', mes, anno, direccionesCitox);
       interruptosSH = shInterruptos;
       totales['SH'] = shTotales;
       ({ totalReub, totalCovid, totalProd25, totalProd48 } = shTotals);
