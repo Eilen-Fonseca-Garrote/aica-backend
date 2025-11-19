@@ -92,11 +92,9 @@ export class AusenciasService {
     }
   }
 
-  // Listar trabajadores interruptos dados fecha y ueb
-
-  async cantTrabajadoresInterruptos(ueb: number, fecha: string): Promise<any> {
-    console.log('🔍 Iniciando cantTrabajadoresInterruptos:', { ueb, fecha });
-    try {
+  
+  // Listar trabajadores interruptos dados ueb y fecha 
+async cantTrabajadoresInterruptos(ueb: string, fecha: string): Promise<any> {
     const [mes, anno] = fecha.split('-').map((part) => parseInt(part, 10));
     this.getBaseUri();
 
@@ -117,18 +115,18 @@ export class AusenciasService {
 
     if (ueb === 0) {
       // Obtener direcciones para cada UEB
-      const direccionesAica = await this.fetchDirecciones(16);
-      const direccionesLiorad = await this.fetchDirecciones(25);
-      const direccionesJT = await this.fetchDirecciones(55);
-      const direccionesCitox = await this.fetchDirecciones(100);
-      const direccionesSH = await this.fetchDirecciones(57);
+      const direccionesAica = await this.fetchDirecciones("16");
+      const direccionesLiorad = await this.fetchDirecciones("25");
+      const direccionesJT = await this.fetchDirecciones("55");
+      const direccionesCitox = await this.fetchDirecciones("100");
+      const direccionesSH = await this.fetchDirecciones("57");
 
       // Procesar AICA (UEB=16)
       const {
         interruptos: aicaInterruptos,
         totales: aicaTotales,
         ...aicaTotals
-      } = await this.procesarUEB(16, mes, anno, direccionesAica);
+      } = await this.procesarUEB("16", mes, anno, direccionesAica);
       interruptosAica = aicaInterruptos;
       totales['AICA'] = aicaTotales;
       ({ totalReub, totalCovid, totalProd25, totalProd48 } = aicaTotals);
@@ -138,7 +136,7 @@ export class AusenciasService {
         interruptos: lioradInterruptos,
         totales: lioradTotales,
         ...lioradTotals
-      } = await this.procesarUEB(25, mes, anno, direccionesLiorad);
+      } = await this.procesarUEB("25", mes, anno, direccionesLiorad);
       interruptosLiorad = lioradInterruptos;
       totales['Liorad'] = lioradTotales;
       ({ totalReub, totalCovid, totalProd25, totalProd48 } = lioradTotals);
@@ -148,7 +146,7 @@ export class AusenciasService {
         interruptos: jtInterruptos,
         totales: jtTotales,
         ...jtTotals
-      } = await this.procesarUEB(55, mes, anno, direccionesJT);
+      } = await this.procesarUEB("55", mes, anno, direccionesJT);
       interruptosJT = jtInterruptos;
       totales['JT'] = jtTotales;
       ({ totalReub, totalCovid, totalProd25, totalProd48 } = jtTotals);
@@ -158,7 +156,7 @@ export class AusenciasService {
         interruptos: citoxInterruptos,
         totales: citoxTotales,
         ...citoxTotals
-      } = await this.procesarUEB(100, mes, anno, direccionesCitox);
+      } = await this.procesarUEB("100", mes, anno, direccionesCitox);
       interruptosCitox = citoxInterruptos;
       totales['CITOX'] = citoxTotales;
       ({ totalReub, totalCovid, totalProd25, totalProd48 } = citoxTotals);
@@ -168,7 +166,7 @@ export class AusenciasService {
         interruptos: shInterruptos,
         totales: shTotales,
         ...shTotals
-      } = await this.procesarUEB(57, mes, anno, direccionesCitox);
+      } = await this.procesarUEB("57", mes, anno, direccionesCitox);
       interruptosSH = shInterruptos;
       totales['SH'] = shTotales;
       ({ totalReub, totalCovid, totalProd25, totalProd48 } = shTotals);
@@ -195,29 +193,17 @@ export class AusenciasService {
       totales,
       totalesInt,
     };
-     } catch (error) {
-        console.error('💥 Error en cantTrabajadoresInterruptos:', error);
-    throw error;
-  }
   }
 
-  public async fetchDirecciones(ueb: number): Promise<any[]> {
-    console.log('Probando fetchDirecciones:', { ueb });
-    let data;
-    try{
-      const response = await axios.get(
-        `${this.baseUri}/recursosHumanos/direccionesUEB?ueb=${ueb}`,
-      );
-      data = response.data;
-    return data;
-    } catch (error){
-      console.error('💥 Error en fetchDirecciones:', error);
-    throw error;
-    }
+  private async fetchDirecciones(ueb: string): Promise<any[]> {
+    const response = await axios.get(
+      `${this.baseUri}/recursosHumanos/direccionesUEB?ueb=${ueb}`,
+    );
+    return response.data;
   }
 
   private async procesarUEB(
-    ueb: number,
+    ueb: string,
     mes: number,
     anno: number,
     direcciones: any[],
@@ -269,18 +255,16 @@ export class AusenciasService {
     };
   }
 
-  public async fetchInterruptos(
+  private async fetchInterruptos(
     tipo: string,
-    ueb: number,
+    ueb: string,
     mes: number,
     anno: number,
   ): Promise<Interrupto[]> {
-    let data;
-      const response = await axios.get(
-        `${this.baseUri}/recursosHumanos/${tipo}?ueb=${ueb}&mes=${mes}&anno=${anno}`,
-      );
-      data = response.data;
-    return data;
+    const response = await axios.get(
+      `${this.baseUri}/recursosHumanos/${tipo}?ueb=${ueb}&mes=${mes}&anno=${anno}`,
+    );
+    return response.data;
   }
 
   buscarInterrupto(dir: string, intArray: Interrupto[]): number {
@@ -347,67 +331,10 @@ export class AusenciasService {
     return result;
   }
 
-  //Filtrar trabajadores por ueb, dirección, área, municipio, reparto, sexo, cantidad de hijos
-  //filtrar trabajadores también por grupo sanguíneo, nivel escolar, raza, carrera
 
-/*   public obtenerFiltros(filters: FiltersDto): Array<[string, string]> {
-    const resultado: Array<[string, string]> = [];
 
-    if (filters.direccionFSelect && filters.uebSelect) {
-      const direccion = this.getDireccionById(
-        filters.direccionFSelect,
-        filters.uebSelect,
-      );
-      resultado.push(['Dirección', direccion]);
-    }
+  
 
-    if (filters.cargo) {
-      resultado.push(['Cargo', filters.cargo.trim()]);
-    }
+ 
 
-    if (filters.sexoSelect) {
-      resultado.push(['Sexo', filters.sexoSelect.trim()]);
-    }
-
-    if (filters.edad && filters.edadOperator) {
-      resultado.push(['Edad', `${filters.edadOperator}${filters.edad}`]);
-    }
-
-    if (filters.carrera) {
-      resultado.push(['Carrera', filters.carrera.trim()]);
-    }
-
-    if (filters.municipioSelect) {
-      resultado.push(['Municipio', filters.municipioSelect.trim()]);
-    }
-
-    if (filters.grupoFactor) {
-      resultado.push(['Grupo Sanguíneo', filters.grupoFactor.trim()]);
-    }
-
-    if (filters.hijos !== undefined) {
-      resultado.push(['Cantidad de Hijos', filters.hijos.toString()]);
-    }
-
-    if (filters.pcc) {
-      resultado.push(['PCC', 'pertenece']);
-    }
-
-    if (filters.ujc) {
-      resultado.push(['UJC', 'pertenece']);
-    }
-
-    if (filters.uebSelect) {
-      resultado.push(['UEB', filters.uebSelect.trim()]);
-    }
-
-    // Agrega más filtros según sea necesario
-
-    return resultado;
-  }
-
-  private getDireccionById(direccionId: string, uebId: string): string {
-    // Simula la obtención de la dirección por ID
-    return `Dirección Obtenida para ID ${direccionId} y UEB ${uebId}`;
-  } */
-}
+  

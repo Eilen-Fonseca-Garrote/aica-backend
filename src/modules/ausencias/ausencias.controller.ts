@@ -50,7 +50,7 @@ export class AusenciasController {
   } */
   @Get('interruptos')
   async getTrabajadoresInterruptos(
-    @Query('ueb') ueb: number,
+    @Query('ueb') ueb: string,
     @Query('fecha') fecha: string,
   ) {
     if (!ueb || !fecha) {
