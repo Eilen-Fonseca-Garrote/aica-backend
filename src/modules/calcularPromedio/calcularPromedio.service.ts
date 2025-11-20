@@ -37,7 +37,6 @@ export class CalcularPromedioService {
   
       // Get clave26 (assuming this is a separate service)
       const clave26 = await this.getPromedioByClaveId('26');
-      console.log("clave26", clave26)
       const clave26Restar = clave26[0].restar;
   
       if (ueb === "0") {
@@ -74,7 +73,7 @@ export class CalcularPromedioService {
             promedio = await this.getPromTrabajadores("57", "302", mes, anno);
             break;
           default:
-            promedio = await this.getPromTrabajadores(ueb, "%%", mes, anno);
+            promedio = await this.getPromTrabajadores(ueb, "", mes, anno);
         }
   
         // Special handling for UEB 25 and 55
@@ -94,7 +93,6 @@ export class CalcularPromedioService {
 
     async getPromedioRango(ueb: string, direccion: string, fecha: string): Promise<any> {
       const [anno, mes] = fecha.split('-');
-      console.log("DIRECCION", direccion)
       let finalDireccion = direccion;
   
       // Handle special cases for UEB 25
@@ -114,7 +112,6 @@ export class CalcularPromedioService {
         if (direccion === "1") {
           promedio = this.getPromedioDirGeneral(promedio);
         }
-        console.log("ASD", promedio)
         const unidad = promedio.length > 0 ? promedio[0].Unidad : "";
         const total = this.getTotalPromedioDiario(promedio);
         const uebName = await this.getUEBByCode(ueb);
