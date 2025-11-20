@@ -1326,39 +1326,11 @@ public async getInterruptosTestPDF(): Promise<Buffer> {
     totalesInt: null
   };
 
-  return await this.generateFakeInterruptosPDF(fakeData, "UEB Test", "10-2025");
+  return await this.generateInterruptosPDF(fakeData, "UEB Test", "10-2025");
 }
 
 
-async generateFakeInterruptosPDF(
-  data: any,
-  ueb: string,
-  fecha: string,
-): Promise<any> {
-  applyPlugin(jsPDF);
-  const doc = new jsPDF('landscape');
-  let yPosition = 10;
 
-  // Estilo base
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'normal');
-
-  // Encabezado
-  doc.setFontSize(16);
-  doc.text('Trabajadores Interruptos - DATOS DE PRUEBA', 14, yPosition);
-  doc.setFontSize(12);
-  doc.text(`Fecha: ${fecha}`, doc.internal.pageSize.width - 60, yPosition);
-  yPosition += 15;
-
-  // Usar la misma lógica de presentación que el reporte real
-  if (data.interruptos && data.interruptos.length > 0) {
-    this.addUEBSection(doc, ueb, data.interruptos, data, yPosition);
-  }
-
-  const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
-  return pdfBuffer;
-}
-  
 
 
 
