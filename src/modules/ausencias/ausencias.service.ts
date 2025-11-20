@@ -14,46 +14,93 @@ import {
   TotalInterruptosUEB,
   TotalResult,
 } from 'src/common/types/interruptos.types';
-import { ExportUtilities } from '../export/export.utility';
 
 @Injectable()
 export class AusenciasService {
   private baseUri: string;
   private readonly logger = new Logger(AusenciasService.name);
 
-  constructor(
-    private readonly configService: ConfigService,
-    private readonly exportUtilities: ExportUtilities, // Inyección de ExportUtilities
-  ) {}
+  constructor(private readonly configService: ConfigService) {}
   private getBaseUri() {
     this.baseUri = this.configService.get<string>('SIGERH_BASE_PATH') as string;
     //this.utils.setBaseUri(this.baseUri);
   }
 
-  //Listar cantidad de trabajadores por clave de ausentismo
-  public async trabPorClaves(codigos: string[], fecha: string, ueb: string) {
-    this.getBaseUri();
-    const uebName = this.getUEBByCode(ueb);
-    const normalizedUebName =
-      uebName === 'Julio Trigo' ? 'JT' : uebName.toUpperCase();
-    const clavesCount = await this.getTrabCountClaves(codigos, fecha);
+ /*  // Listar cantidad de trabajadores por clave de ausentismo
+  public async listAusentismoClaves(ueb: string, fecha: string) {
+    
 
-    let clavesRes: any = [];
+    try {
+      const trabajadores = await axios.get(
+        `${this.baseUri}/recursosHumanos/ausentismoClaves?ueb=${ueb}&fecha=${fecha}`,
+      );
+
+      if (!trabajadores.data || !Array.isArray(trabajadores.data)) {
+        throw new InternalServerErrorException(
+          'La respuesta del servicio no es válida.',
+        );
+      }
+
+      console.log(
+        `Respuesta obtenida: ${JSON.stringify(trabajadores.data)}`,
+      );
+      return trabajadores.data;
+    } catch (error) {
+      console.error(
+        `Error al obtener claves de ausentismo: ${error.message}`,
+      );
+
+      if (error.response) {
+        throw new InternalServerErrorException(
+          `Error del servicio externo: ${error.response.status} - ${error.response.data}`,
+        );
+      } else if (error.request) {
+        throw new InternalServerErrorException(
+          'No se pudo conectar al servicio externo.',
+        );
+      } else {
+        throw new InternalServerErrorException(
+          'Error inesperado: ' + error.message,
+        );
+      }
+    }
+  }
+ */
+  public async trabPorClaves(
+    codigos: string[],
+    fecha: string,
+    ueb: string,
+  ) {
+    this.getBaseUri();
+    console.log('Parámetros recibidos en trabPorClaves:', {
+      codigos,
+      fecha,
+      ueb,
+    });
+    const uebName = this.getUEBByCode(ueb);
+    console.log('Valor de uebName:', uebName);
+    const normalizedUebName = uebName === 'Julio Trigo' ? 'JT' : uebName.toUpperCase();
+    console.log('Valor de normalizedUebName:', normalizedUebName);
+    const clavesCount = await this.getTrabCountClaves(codigos, fecha);
+    console.log('Datos devueltos por getTrabCountClaves:', clavesCount);
+    let clavesRes:any = [];
     let found = false;
     let i = 0;
 
     while (i < clavesCount.length && !found) {
+      console.log(`Comparando: ${clavesCount[i].UEB} === ${normalizedUebName}`);
       if (clavesCount[i].UEB === normalizedUebName) {
+        console.log("yep");
         found = true;
         clavesRes = clavesCount[i].CLAVES;
       }
+      console.log("nope");
       i++;
     }
 
+    console.log('Resultado final de trabPorClaves:', clavesRes);
     return clavesRes;
   }
-
-  //Obtener nombre de la UEB por el código
   private getUEBByCode(ueb: string): string {
     const uebMap: { [key: string]: string } = {
       '16': 'AICA',
@@ -64,10 +111,8 @@ export class AusenciasService {
     };
     return uebMap[ueb] || 'Unknown UEB';
   }
-  public async getTrabCountClaves(
-    codigos: string[],
-    fecha: string,
-  ): Promise<any[]> {
+  public async getTrabCountClaves(codigos: string[], fecha: string): Promise<any[]> {
+
     const codigosJson = codigos.map((codigo) => ({ ClvCod: codigo }));
     const [mes, anno] = fecha.split('-');
 
@@ -82,20 +127,48 @@ export class AusenciasService {
         {
           headers: { 'Content-Type': 'application/json' }, // Encabezados
         },
-      )
+      );
+
       return response.data;
     } catch (error) {
       console.error(error);
-      throw new InternalServerErrorException(
-        'Error al obtener claves de ausentismo.',
-      );
+      throw new InternalServerErrorException('Error al obtener claves de ausentismo.');
     }
   }
+  // Listar trabajadores interruptos dados fecha y ueb
+  /*   public async listTrabajadoresInterruptos(ueb: string, fecha: string) {
+    
 
-  
-  // Listar trabajadores interruptos dados ueb y fecha 
+    try {
+      this.logger.log(`Solicitando trabajadores interruptos para UEB: ${ueb}, Fecha: ${fecha}`);
+      const client = axios.create({ baseURL: 'http://example.com/api' });
 
-async cantTrabajadoresInterruptos(ueb: string, fecha: string): Promise<any> {
+      const trabajadores = await client.get(
+        `/recursosHumanos/trabajadoresInterruptos?ueb=${ueb}&fecha=${fecha}`,
+      );
+
+      if (!trabajadores.data || !Array.isArray(trabajadores.data)) {
+        throw new InternalServerErrorException('La respuesta del servicio no es válida.');
+      }
+
+      this.logger.log(`Respuesta obtenida: ${JSON.stringify(trabajadores.data)}`);
+      return trabajadores.data;
+    } catch (error) {
+      this.logger.error(`Error al obtener trabajadores interruptos: ${error.message}`);
+
+      if (error.response) {
+        throw new InternalServerErrorException(
+          `Error del servicio externo: ${error.response.status} - ${error.response.data}`,
+        );
+      } else if (error.request) {
+        throw new InternalServerErrorException('No se pudo conectar al servicio externo.');
+      } else {
+        throw new InternalServerErrorException('Error inesperado: ' + error.message);
+      }
+    }
+  } */
+
+  async cantTrabajadoresInterruptos(ueb: number, fecha: string): Promise<any> {
     const [mes, anno] = fecha.split('-').map((part) => parseInt(part, 10));
     this.getBaseUri();
 
@@ -114,20 +187,20 @@ async cantTrabajadoresInterruptos(ueb: string, fecha: string): Promise<any> {
     const totales: { [key: string]: { [key: string]: TotalResult } } = {};
     let totalesInt: TotalInterruptosUEB | null = null;
 
-    if (ueb === '0') {
+    if (ueb === 0) {
       // Obtener direcciones para cada UEB
-      const direccionesAica = await this.fetchDirecciones('16');
-      const direccionesLiorad = await this.fetchDirecciones('25');
-      const direccionesJT = await this.fetchDirecciones('55');
-      const direccionesCitox = await this.fetchDirecciones('100');
-      const direccionesSH = await this.fetchDirecciones('57');
+      const direccionesAica = await this.fetchDirecciones(16);
+      const direccionesLiorad = await this.fetchDirecciones(25);
+      const direccionesJT = await this.fetchDirecciones(55);
+      const direccionesCitox = await this.fetchDirecciones(100);
+      const direccionesSH = await this.fetchDirecciones(57);
 
       // Procesar AICA (UEB=16)
       const {
         interruptos: aicaInterruptos,
         totales: aicaTotales,
         ...aicaTotals
-      } = await this.procesarUEB('16', mes, anno, direccionesAica);
+      } = await this.procesarUEB(16, mes, anno, direccionesAica);
       interruptosAica = aicaInterruptos;
       totales['AICA'] = aicaTotales;
       ({ totalReub, totalCovid, totalProd25, totalProd48 } = aicaTotals);
@@ -137,7 +210,7 @@ async cantTrabajadoresInterruptos(ueb: string, fecha: string): Promise<any> {
         interruptos: lioradInterruptos,
         totales: lioradTotales,
         ...lioradTotals
-      } = await this.procesarUEB('25', mes, anno, direccionesLiorad);
+      } = await this.procesarUEB(25, mes, anno, direccionesLiorad);
       interruptosLiorad = lioradInterruptos;
       totales['Liorad'] = lioradTotales;
       ({ totalReub, totalCovid, totalProd25, totalProd48 } = lioradTotals);
@@ -147,7 +220,7 @@ async cantTrabajadoresInterruptos(ueb: string, fecha: string): Promise<any> {
         interruptos: jtInterruptos,
         totales: jtTotales,
         ...jtTotals
-      } = await this.procesarUEB('55', mes, anno, direccionesJT);
+      } = await this.procesarUEB(55, mes, anno, direccionesJT);
       interruptosJT = jtInterruptos;
       totales['JT'] = jtTotales;
       ({ totalReub, totalCovid, totalProd25, totalProd48 } = jtTotals);
@@ -157,7 +230,7 @@ async cantTrabajadoresInterruptos(ueb: string, fecha: string): Promise<any> {
         interruptos: citoxInterruptos,
         totales: citoxTotales,
         ...citoxTotals
-      } = await this.procesarUEB('100', mes, anno, direccionesCitox);
+      } = await this.procesarUEB(100, mes, anno, direccionesCitox);
       interruptosCitox = citoxInterruptos;
       totales['CITOX'] = citoxTotales;
       ({ totalReub, totalCovid, totalProd25, totalProd48 } = citoxTotals);
@@ -167,7 +240,7 @@ async cantTrabajadoresInterruptos(ueb: string, fecha: string): Promise<any> {
         interruptos: shInterruptos,
         totales: shTotales,
         ...shTotals
-      } = await this.procesarUEB('57', mes, anno, direccionesCitox);
+      } = await this.procesarUEB(57, mes, anno, direccionesCitox);
       interruptosSH = shInterruptos;
       totales['SH'] = shTotales;
       ({ totalReub, totalCovid, totalProd25, totalProd48 } = shTotals);
@@ -196,7 +269,7 @@ async cantTrabajadoresInterruptos(ueb: string, fecha: string): Promise<any> {
     };
   }
 
-  private async fetchDirecciones(ueb: string): Promise<any[]> {
+  private async fetchDirecciones(ueb: number): Promise<any[]> {
     const response = await axios.get(
       `${this.baseUri}/recursosHumanos/direccionesUEB?ueb=${ueb}`,
     );
@@ -204,7 +277,7 @@ async cantTrabajadoresInterruptos(ueb: string, fecha: string): Promise<any> {
   }
 
   private async procesarUEB(
-    ueb: string,
+    ueb: number,
     mes: number,
     anno: number,
     direcciones: any[],
@@ -258,7 +331,7 @@ async cantTrabajadoresInterruptos(ueb: string, fecha: string): Promise<any> {
 
   private async fetchInterruptos(
     tipo: string,
-    ueb: string,
+    ueb: number,
     mes: number,
     anno: number,
   ): Promise<Interrupto[]> {
@@ -332,12 +405,68 @@ async cantTrabajadoresInterruptos(ueb: string, fecha: string): Promise<any> {
     return result;
   }
 
+  //Filtrar trabajadores por ueb, dirección, área, municipio, reparto, sexo, cantidad de hijos
+  //filtrar trabajadores también por grupo sanguíneo, nivel escolar, raza, carrera
+
+ /* public obtenerFiltros(filters: FiltersDto): Array<[string, string]> {
+    const resultado: Array<[string, string]> = [];
+
+    if (filters.direccionFSelect && filters.uebSelect) {
+      const direccion = this.getDireccionById(
+        filters.direccionFSelect,
+        filters.uebSelect,
+      );
+      resultado.push(['Dirección', direccion]);
+    }
+
+    if (filters.cargo) {
+      resultado.push(['Cargo', filters.cargo.trim()]);
+    }
+
+    if (filters.sexoSelect) {
+      resultado.push(['Sexo', filters.sexoSelect.trim()]);
+    }
+
+    if (filters.edad && filters.edadOperator) {
+      resultado.push(['Edad', `${filters.edadOperator}${filters.edad}`]);
+    }
+
+    if (filters.carrera) {
+      resultado.push(['Carrera', filters.carrera.trim()]);
+    }
+
+    if (filters.municipioSelect) {
+      resultado.push(['Municipio', filters.municipioSelect.trim()]);
+    }
+
+    if (filters.grupoFactor) {
+      resultado.push(['Grupo Sanguíneo', filters.grupoFactor.trim()]);
+    }
+
+    if (filters.hijos !== undefined) {
+      resultado.push(['Cantidad de Hijos', filters.hijos.toString()]);
+    }
+
+    if (filters.pcc) {
+      resultado.push(['PCC', 'pertenece']);
+    }
+
+    if (filters.ujc) {
+      resultado.push(['UJC', 'pertenece']);
+    }
+
+    if (filters.uebSelect) {
+      resultado.push(['UEB', filters.uebSelect.trim()]);
+    }
+
+    // Agrega más filtros según sea necesario
+
+    return resultado;
+  } */
+
+ /* private getDireccionById(direccionId: string, uebId: string): string {
+    // Simula la obtención de la dirección por ID
+    return `Dirección Obtenida para ID ${direccionId} y UEB ${uebId}`;
+  } */
+  
 }
-
-
-
-  
-
- 
-
-  

@@ -50,7 +50,7 @@ export class AusenciasController {
   } */
   @Get('interruptos')
   async getTrabajadoresInterruptos(
-    @Query('ueb') ueb: string,
+    @Query('ueb') ueb: number,
     @Query('fecha') fecha: string,
   ) {
     if (!ueb || !fecha) {
@@ -70,6 +70,7 @@ export class AusenciasController {
     return await this.ausenciasService.cantTrabajadoresInterruptos(ueb, fecha);
   }
 
+
   // Agregar endpoint de prueba
 @Get('interruptos-test')
 async testInterruptos() {
@@ -78,8 +79,8 @@ async testInterruptos() {
     interruptos: [
       {
         Direccion: "UEB Dirección",
-        covid: 5,
-        reubicados: 3,
+        covid: 3,
+        reubicados: 7,
         produccion25: 10,
         produccion48: 2
       }
@@ -87,7 +88,7 @@ async testInterruptos() {
     totalReub: { Total: 7, F: 4, M: 3 },
     totalCovid: { Total: 3, F: 1, M: 2 },
     totalProd25: { Total: 10, F: 6, M: 4 },
-    totalProd48: { Total: 2, F: 1, M: 1 },
+    totalProd48: { Total: 13, F: 9, M: 4 },
     totales: {},
     totalesInt: null
   };
