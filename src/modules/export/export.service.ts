@@ -1326,7 +1326,7 @@ public async getInterruptosTestPDF(): Promise<Buffer> {
     totalesInt: null
   };
 
-  return await this.generateInterruptosPDF(fakeData, "UEB Test", "10-2025");
+  return await this.generateInterruptosPDF(fakeData, "AICA", "10-2025");
 }
 
 
