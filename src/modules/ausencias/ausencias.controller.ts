@@ -79,16 +79,16 @@ async testInterruptos() {
     interruptos: [
       {
         Direccion: "UEB Dirección",
-        covid: 3,
-        reubicados: 7,
+        covid: 0,
+        reubicados: 46,
         produccion25: 78,
-        produccion48: 2
+        produccion48: 104
       }
     ],
-    totalReub: { Total: 22, F: 12, M: 10 },
+    totalReub: { Total: 46, F: 26, M: 20 },
     totalCovid: { Total: 0, F: 0, M: 0 },
     totalProd25: { Total: 78, F: 43, M: 35 },
-    totalProd48: { Total: 46, F: 26, M: 20 },
+    totalProd48: { Total: 104, F: 64, M: 48 },
     totales: {},
     totalesInt: null
   };

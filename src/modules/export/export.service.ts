@@ -1305,44 +1305,64 @@ export class ExportService {
   return pdfBuffer;
 }
 
-// exportar pdf de prueba interruptos
+// Exportar pdf de prueba interruptos
+public async getInterruptosTestPDF(): Promise<Buffer> {
+  // Datos falsos proporcionados
+  const fakeData = {
+    interruptos: [
+      {
+        Direccion: "UEB Dirección",
+        covid: 0,
+        reubicados: 46,
+        produccion25: 78,
+        produccion48: 104
+      }
+    ],
+    totalReub: { Total: 46, F: 26, M: 20 },
+    totalCovid: { Total: 0, F: 0, M: 0 },
+    totalProd25: { Total: 78, F: 43, M: 35 },
+    totalProd48: { Total: 104, F: 64, M: 48 },
+    totales: {},
+    totalesInt: null
+  };
+
+  return await this.generateFakeInterruptosPDF(fakeData, "UEB Test", "10-2025");
+}
+
+
+async generateFakeInterruptosPDF(
+  data: any,
+  ueb: string,
+  fecha: string,
+): Promise<any> {
+  applyPlugin(jsPDF);
+  const doc = new jsPDF('landscape');
+  let yPosition = 10;
+
+  // Estilo base
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+
+  // Encabezado
+  doc.setFontSize(16);
+  doc.text('Trabajadores Interruptos - DATOS DE PRUEBA', 14, yPosition);
+  doc.setFontSize(12);
+  doc.text(`Fecha: ${fecha}`, doc.internal.pageSize.width - 60, yPosition);
+  yPosition += 15;
+
+  // Usar la misma lógica de presentación que el reporte real
+  if (data.interruptos && data.interruptos.length > 0) {
+    this.addUEBSection(doc, ueb, data.interruptos, data, yPosition);
+  }
+
+  const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
+  return pdfBuffer;
+}
   
 
-  public async getInterruptosTestPDF():Promise<Buffer> {
-    
-    return await this.generateTestPdf();
 
-  }
 
-async generateTestPdf(): Promise<Buffer> {
-    try {
-      // Crear un PDF simple con jsPDF
-      const doc = new jsPDF();
-      
-      // Agregar contenido de prueba
-      doc.setFontSize(16);
-      doc.text('Reporte de Interruptos -', 20, 20);
-      
-      doc.setFontSize(12);
-      doc.text('Para los datos de la UEB', 20, 40);
-      doc.text('Mientras se soluciona el endpoint real de pdf', 20, 50);
-      
-      doc.text('Datos de ejemplo:', 20, 70);
-      doc.text('- Interruptos por Covid: 3', 20, 80);
-      doc.text('- Interruptos por Reubicación: 7', 20, 90);
-      doc.text('- Interruptos Producción 100%: 18', 20, 100);
-      doc.text('- Interruptos Producción 60%: 3', 20, 110);
-      
-      doc.text('Fecha de generación: ' + new Date().toLocaleDateString(), 20, 130);
-      
-      // Convertir a Buffer
-      const pdfOutput =  Buffer.from(doc.output('arraybuffer'));
-    return pdfOutput;
-      
-    } catch (error) {
-      this.logger.error('Error generando PDF :', error);
-      throw new InternalServerErrorException('Error generando PDF de prueba');
-    }
-  }
+   
+
 
 }
