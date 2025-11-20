@@ -957,7 +957,7 @@ export class ExportService {
   public async getInterruptosPDF(ueb: string, fecha: string): Promise<Buffer> {
     const interruptosData =
       await this.ausenciasService.cantTrabajadoresInterruptos(
-        ueb,
+         Number(ueb),
         fecha,
       );
     return await this.generateInterruptosPDF(interruptosData, ueb, fecha);
