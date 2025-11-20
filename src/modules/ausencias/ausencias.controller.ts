@@ -86,7 +86,7 @@ async testInterruptos() {
       }
     ],
     totalReub: { Total: 22, F: 12, M: 10 },
-    totalCovid: { Total: 3, F: 1, M: 2 },
+    totalCovid: { Total: 0, F: 0, M: 0 },
     totalProd25: { Total: 78, F: 43, M: 35 },
     totalProd48: { Total: 46, F: 26, M: 20 },
     totales: {},
