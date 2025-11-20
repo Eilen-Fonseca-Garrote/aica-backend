@@ -258,25 +258,25 @@ export class ExportService {
           client.get(`/recursosHumanos/modelo14B?ueb=${ueb}`),
         ]);
       
-      //console.log("direcciones: ", direcciones.data['0']);
-            const direccionesData: DireccionModelo14B[] = [direcciones.data['0']].map((dir: any) => {
-        // Normalize Area: convert object with numeric keys into array
-        const areasArray = Array.isArray(dir.Area)
-          ? dir.Area
-          : Object.keys(dir.Area).map(key => dir.Area[key]);
+          const direccionesData: DireccionModelo14B[] = Object.values(direcciones.data).map((dir: any) => {
+          // Normalize Area: convert object with numeric keys into array
+          const areasArray = Array.isArray(dir.Area)
+            ? dir.Area
+            : Object.keys(dir.Area).map(key => dir.Area[key]);
 
-        return {
-          Unidad: dir.Unidad.trim(),
-          Area: areasArray.map((area: any) => ({
-            Area: area.Area.trim(),
-            trabs: modelo14B.data.filter(
-              (trab: any) =>
-                dir.Unidad.trim() === trab.EstDesc.trim() &&
-                area.Area.trim() === trab.Expr1.trim()
-            ),
-          })),
-        };
-      });
+          return {
+            Unidad: dir.Unidad.trim(),
+            Area: areasArray.map((area: any) => ({
+              Area: area.Area.trim(),
+              trabs: modelo14B.data.filter(
+                (trab: any) =>
+                  dir.Unidad.trim() === trab.EstDesc.trim() &&
+                  area.Area.trim() === trab.Expr1.trim()
+              ),
+            })),
+          };
+        });
+
 
         UEBModelo14B.direcciones = direccionesData;
         result.push(UEBModelo14B);
@@ -293,7 +293,6 @@ export class ExportService {
     const workbook = new ExcelJS.Workbook();
     const mes = new Date().getMonth() + 1;
     const anno = new Date().getFullYear();
-
     data.forEach((uebData) => {
       const worksheet = workbook.addWorksheet(uebData.ueb);
       this.createModel14BSheet(worksheet, uebData, mes, anno);
@@ -970,7 +969,6 @@ export class ExportService {
     ueb: string,
     fecha: string,
   ): Promise<any> {
-    //console.log("111111");
     applyPlugin(jsPDF);
     const doc = new jsPDF('landscape');
     let yPosition = 10;
@@ -988,7 +986,6 @@ export class ExportService {
 
     if (data.interruptos) {
       // Caso para UEB específica
-      console.log('me ejecuto');
       this.addUEBSection(doc, ueb, data.interruptos, data, yPosition);
     } else {
       // Caso para todas las UEB
@@ -1033,10 +1030,8 @@ export class ExportService {
       doc.setFontSize(14);
       doc.text('Totales Generales', 14, yPosition);
       yPosition += 8;
-      console.log('añado totales generales');
       this.addTotalTable(doc, data.totalesInt, yPosition);
     }
-    console.log('voy a hacer el return');
     const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
     return pdfBuffer;
   }
@@ -1070,7 +1065,6 @@ export class ExportService {
       item.produccion48.toString(),
     ]);
 
-    console.log('2222222');
     // Añadir tabla
     (doc as any).autoTable({
       startY: y,
@@ -1237,19 +1231,12 @@ export class ExportService {
     fecha: string,
     ueb: string,
   ): Promise<Buffer> {
-    console.log('Parámetros recibidos en getClavesAusentismoPDF:', {
-      codigos,
-      fecha,
-      ueb,
-    });
-
     const interruptosData =
       await this.ausenciasService.trabPorClaves(
         codigos,
         fecha,
         ueb,
       );
-    console.log(interruptosData);
     //return await this.generateClavesAusentismoPDF(interruptosData);
       return await this.generateClavesAusentismoPDF(interruptosData, fecha, ueb);
   }
@@ -1261,8 +1248,6 @@ export class ExportService {
 ) {
   const doc = new jsPDF('p', 'mm', 'a4');
   let yPosition = 20;
-
-  console.log(data);
   
   // Establecer estilos iniciales
   doc.setFont('helvetica');
