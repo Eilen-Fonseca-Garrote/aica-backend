@@ -81,14 +81,14 @@ async testInterruptos() {
         Direccion: "UEB Dirección",
         covid: 3,
         reubicados: 7,
-        produccion25: 10,
+        produccion25: 78,
         produccion48: 2
       }
     ],
-    totalReub: { Total: 7, F: 4, M: 3 },
+    totalReub: { Total: 22, F: 12, M: 10 },
     totalCovid: { Total: 3, F: 1, M: 2 },
-    totalProd25: { Total: 10, F: 6, M: 4 },
-    totalProd48: { Total: 13, F: 9, M: 4 },
+    totalProd25: { Total: 78, F: 43, M: 35 },
+    totalProd48: { Total: 46, F: 26, M: 20 },
     totales: {},
     totalesInt: null
   };

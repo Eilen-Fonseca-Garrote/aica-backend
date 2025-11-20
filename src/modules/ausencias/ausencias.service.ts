@@ -295,10 +295,10 @@ export class AusenciasService {
       interruptosProd25,
       interruptosProd48,
     ] = await Promise.all([
+      this.fetchInterruptos('interruptoReubicacion', ueb, mes, anno),
       this.fetchInterruptos('interruptoCovid', ueb, mes, anno),
-      this.fetchInterruptos('interruptoCovid', ueb, mes, anno),
-      this.fetchInterruptos('interruptoCovid', ueb, mes, anno),
-      this.fetchInterruptos('interruptoCovid', ueb, mes, anno),
+      this.fetchInterruptos('interrupto', ueb, mes, anno),
+      this.fetchInterruptos('interrupto60', ueb, mes, anno),
     ]);
 
     const totalReub = this.interruptosTotal(interruptosReub);
