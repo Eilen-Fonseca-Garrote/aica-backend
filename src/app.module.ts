@@ -7,6 +7,7 @@ import { ExportModule } from './modules/export/export.module';
 import { BuscarTrabajadorModule } from './modules/buscarTranajador/buscarTrabajador.module';
 import { CalcularPromedioModule } from './modules/calcularPromedio/calcularPromedio.module';
 import { AusenciasModule } from './modules/ausencias/ausencias.module';
+import { ListarTrabajadoresModule } from './modules/listarTrabajadores/listarTrabajadores.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { AusenciasModule } from './modules/ausencias/ausencias.module';
     BuscarTrabajadorModule,
     CalcularPromedioModule,
     AusenciasModule,
+    ListarTrabajadoresModule,
   ],
   
 })

@@ -13,8 +13,7 @@ import {
 } from '@nestjs/common';
 import { BuscarTrabajadorService } from './buscarTrabajador.service';
 import { ApiTags } from '@nestjs/swagger';
-import { Readable } from 'stream';
-import { Response } from 'express';
+
 
 @ApiTags('buscarTrabajador')
 @Controller('buscarTrabajador')
