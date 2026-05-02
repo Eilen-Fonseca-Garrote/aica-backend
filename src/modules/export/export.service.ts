@@ -1415,4 +1415,9 @@ public async getInterruptosTestPDF(): Promise<Buffer> {
 
     return await workbook.xlsx.writeBuffer();
   }
+
+  private cleanValue(value: any): string {
+    if (value === null || value === undefined) return '-';
+    return String(value).trim();
+  }
 }
