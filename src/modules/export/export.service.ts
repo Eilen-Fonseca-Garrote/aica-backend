@@ -1348,4 +1348,71 @@ public async getInterruptosTestPDF(): Promise<Buffer> {
     }
   }
 
+  public async generateTrabajadoresFisicosExcel(
+    fecha: string,
+  ) {
+    const trabajadores = await this.fetchTrabajadoresFisicos(fecha);
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Trabajadores');
+
+    // Definir columnas según el mapeo requerido
+    worksheet.columns = [
+      { header: 'Identificación', key: 'id', width: 20 },
+      { header: 'Nombre', key: 'nombre', width: 25 },
+      { header: 'Apellido 1', key: 'apellido1', width: 20 },
+      { header: 'Apellido 2', key: 'apellido2', width: 20 },
+      { header: 'UEB', key: 'ueb', width: 20 },
+      { header: 'Área', key: 'area', width: 30 },
+      { header: 'Dirección', key: 'direccion', width: 30 },
+    ];
+
+    // Estilo para encabezados
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF65B1C4' },
+      };
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' },
+      };
+    });
+
+    // Agregar filas manteniendo el orden del API
+    trabajadores.forEach((trab) => {
+      const row = worksheet.addRow({
+        id: this.cleanValue(trab.TrbNumIden),
+        nombre: this.cleanValue(trab.TrbNom),
+        apellido1: this.cleanValue(trab.TrbAp1),
+        apellido2: this.cleanValue(trab.TrbAp2),
+        ueb: this.cleanValue(trab.UEB),
+        area: this.cleanValue(trab.AREA),
+        direccion: this.cleanValue(trab.DIRECCION),
+      });
+      row.eachCell({ includeEmpty: true }, (cell) => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' },
+        };
+        cell.alignment = { vertical: 'middle', wrapText: true };
+      });
+    });
+
+    // Congelar la primera fila
+    worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+    worksheet.autoFilter = {
+      from: 'A1',
+      to: `G${worksheet.rowCount}`,
+    };
+
+    return await workbook.xlsx.writeBuffer();
+  }
 }
