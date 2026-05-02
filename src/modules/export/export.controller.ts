@@ -328,4 +328,60 @@ async getInterruptosTestPDF(@Res({ passthrough: true }) res: Response) {
       );
     }
   }
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Archivo PDF generado exitosamente.',
+    content: {
+      'application/pdf': { schema: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'Error interno al generar el reporte.',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Fecha inválida o no proporcionada.',
+  })
+  @ApiProduces('application/pdf')
+  @Header('Content-Type', 'application/pdf')
+  @HttpCode(HttpStatus.CREATED)
+  @Get('pdf/trabajadores-fisicos')
+  async exportTrabajadoresFisicosPDF(
+    @Query('fecha') fecha: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    if (!fecha) {
+      throw new HttpException(
+        'El parámetro "fecha" es obligatorio.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const fechaRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!fechaRegex.test(fecha)) {
+      throw new HttpException(
+        'Formato de fecha inválido. Use YYYY-MM-DD (ej: 2025-05-02).',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    try {
+      const buffer =
+        await this.exportService.generateTrabajadoresFisicosPDF(fecha);
+      const stream = new Readable();
+      stream.push(buffer);
+      stream.push(null);
+
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename=trabajadores_fisicos_${fecha}.pdf`,
+      );
+      return new StreamableFile(stream);
+    } catch (error) {
+      throw new HttpException(
+        error.message || 'Error al generar el reporte PDF.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }
