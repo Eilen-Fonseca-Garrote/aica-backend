@@ -1329,12 +1329,23 @@ public async getInterruptosTestPDF(): Promise<Buffer> {
   return await this.generateInterruptosPDF(fakeData, "AICA", "10-2025");
 }
 
-
-
-
-
-
-   
-
+  private async fetchTrabajadoresFisicos(fecha: string): Promise<any[]> {
+    try {
+      const url = `${this.baseUri}/recursosHumanos/trabFisicoSigerh`;
+      const response = await axios.get(url, { params: { fecha } });
+      const data = response.data;
+      if (data && Array.isArray(data.Trabajadores)) {
+        return data.Trabajadores;
+      }
+      return [];
+    } catch (error) {
+      this.logger.error(
+        `Error fetching trabajadores físicos: ${error.message}`,
+      );
+      throw new InternalServerErrorException(
+        `Error al obtener los trabajadores físicos para la fecha ${fecha}`,
+      );
+    }
+  }
 
 }
