@@ -1415,6 +1415,77 @@ public async getInterruptosTestPDF(): Promise<Buffer> {
 
     return await workbook.xlsx.writeBuffer();
   }
+  public async generateTrabajadoresFisicosPDF(fecha: string): Promise<Buffer> {
+    const trabajadores = await this.fetchTrabajadoresFisicos(fecha);
+    applyPlugin(jsPDF);
+    const doc = new jsPDF('landscape', 'mm', 'a4');
+    let yPosition = 20;
+
+    // Título y fecha
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Trabajadores Físicos', 14, yPosition);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Fecha consultada: ${fecha}`, 14, yPosition + 8);
+    yPosition += 20;
+
+    // Preparar datos de la tabla
+    const headers = [
+      'Identificación',
+      'Nombre',
+      'Apellido 1',
+      'Apellido 2',
+      'UEB',
+      'Área',
+      'Dirección',
+    ];
+    const rows = trabajadores.map((trab) => [
+      this.cleanValue(trab.TrbNumIden),
+      this.cleanValue(trab.TrbNom),
+      this.cleanValue(trab.TrbAp1),
+      this.cleanValue(trab.TrbAp2),
+      this.cleanValue(trab.UEB),
+      this.cleanValue(trab.AREA),
+      this.cleanValue(trab.DIRECCION),
+    ]);
+
+    // Generar tabla
+    (doc as any).autoTable({
+      startY: yPosition,
+      head: [headers],
+      body: rows,
+      theme: 'grid',
+      styles: { fontSize: 9, cellPadding: 2, halign: 'center' },
+      headStyles: {
+        fillColor: [68, 68, 68],
+        textColor: 255,
+        fontStyle: 'bold',
+      },
+      columnStyles: {
+        0: { cellWidth: 30 },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 30 },
+        4: { cellWidth: 30 },
+        5: { cellWidth: 40 },
+        6: { cellWidth: 40 },
+      },
+    });
+
+    // Pie de página
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    doc.setFontSize(8);
+    doc.text(`Generado el: ${new Date().toLocaleString()}`, 14, finalY);
+    doc.text(
+      `Total de trabajadores: ${trabajadores.length}`,
+      doc.internal.pageSize.width - 40,
+      finalY,
+    );
+
+    const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
+    return pdfBuffer;
+  }
 
   private cleanValue(value: any): string {
     if (value === null || value === undefined) return '-';
