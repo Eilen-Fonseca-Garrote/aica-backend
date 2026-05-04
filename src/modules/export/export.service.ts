@@ -1334,32 +1334,30 @@ public async getInterruptosTestPDF(): Promise<Buffer> {
 
 private async fetchTrabajadoresFisicos(fecha: string): Promise<any[]> {
   try {
-    // ✅ Forzar recarga de baseUri en cada llamada, igual que hace generateAusentismoExcel
     this.getBaseUri();
 
     if (!this.baseUri) {
-      throw new Error('SIGERH_BASE_PATH no está configurado en las variables de entorno.');
+      throw new Error('SIGERH_BASE_PATH no está configurado.');
     }
 
-    // ✅ Convertir de YYYY-MM-DD → DD-MM-YYYY que es el formato que usa SIGERH
-    // El controller valida YYYY-MM-DD, pero la API externa espera DD-MM-YYYY
+    // ✅ Convertir YYYY-MM-DD → DD-MM-YYYY
+    // El SQL interno usa CONVERT(nvarchar, fecha, 105) que es formato DD-MM-YYYY
     const [year, month, day] = fecha.split('-');
     const fechaSigerh = `${day}-${month}-${year}`;
 
-    const url = `${this.baseUri}/recursosHumanos/trabFisicoSigerh`;
+    // ✅ La URL correcta NO lleva /recursosHumanos — el contexto del flujo es vacío ("-")
+    // según la documentación: Contexto: - / Servicio: /trabFisicoSigerh
+    const url = `${this.baseUri}/trabFisicoSigerh`;
 
-    this.logger.log(`Llamando a SIGERH: ${url} con fecha=${fechaSigerh}`);
+    this.logger.log(`[trabFisicoSigerh] URL: ${url} | fecha: ${fechaSigerh}`);
 
     const response = await axios.get(url, {
       params: { fecha: fechaSigerh },
-      // ✅ Timeout explícito para no esperar indefinidamente
       timeout: 15000,
     });
 
     const data = response.data;
 
-    // ✅ Manejo robusto: la API puede devolver el array directamente
-    //    o envuelto en { Trabajadores: [...] }
     if (Array.isArray(data)) {
       return data;
     }
@@ -1368,15 +1366,11 @@ private async fetchTrabajadoresFisicos(fecha: string): Promise<any[]> {
       return data.Trabajadores;
     }
 
-    this.logger.warn(
-      `trabFisicoSigerh devolvió estructura inesperada: ${JSON.stringify(data).slice(0, 200)}`,
-    );
+    this.logger.warn(`Respuesta inesperada de trabFisicoSigerh: ${JSON.stringify(data).slice(0, 300)}`);
     return [];
+
   } catch (error) {
-    this.logger.error(
-      `Error fetching trabajadores físicos para fecha ${fecha}: ${error.message}`,
-    );
-    // ✅ Re-lanzar con el mensaje original para que llegue al controller
+    this.logger.error(`[trabFisicoSigerh] Error: ${error.message}`);
     throw new InternalServerErrorException(
       error.message || `Error al obtener los trabajadores físicos para la fecha ${fecha}`,
     );
