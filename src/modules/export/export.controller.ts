@@ -328,4 +328,44 @@ async getInterruptosTestPDF(@Res({ passthrough: true }) res: Response) {
       );
     }
   }
+  
+@ApiResponse({
+  status: HttpStatus.OK,
+  description: 'Archivo PDF generado exitosamente.',
+  content: {
+    'application/pdf': {
+      schema: { type: 'string', format: 'binary' },
+    },
+  },
+})
+@ApiResponse({
+  status: HttpStatus.INTERNAL_SERVER_ERROR,
+  description: 'Error interno del servidor al generar el reporte.',
+})
+@ApiProduces('application/pdf')
+@Get('pdf/all-workers')
+async exportAllWorkersPdf(@Res({ passthrough: true }) res: Response) {
+  try {
+    const buffer = await this.exportService.generateAllWorkersPdf();
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=trabajadores(${new Date().toISOString().split('T')[0]}).pdf`,
+    });
+
+    const stream = new Readable();
+    stream.push(buffer);
+    stream.push(null);
+
+    return new StreamableFile(stream);
+  } catch (error) {
+    throw new HttpException(
+      'Error al generar el reporte: ' + error.message,
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+  }
+}
+
+
+
 }

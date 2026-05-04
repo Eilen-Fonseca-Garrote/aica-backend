@@ -41,11 +41,13 @@ export class ExportService {
     this.baseUri = this.configService.get<string>('SIGERH_BASE_PATH') as string;
     this.utils.setBaseUri(this.baseUri);
   }
-  async generateAllWorkersPdf(): Promise<Buffer> {
+ 
+ /*async generateAllWorkersPdf(): Promise<Buffer> {
     // Implementation for generating PDF file
     const pdfBuffer = Buffer.from('PDF content here'); // Replace with actual PDF generation logic
     return pdfBuffer;
-  }
+  } */
+
   private async getWorkers(baseUri: string): Promise<any[]> {
     try {
       const { data } = await axios.get(`${baseUri}/trabVillar`);
@@ -1421,4 +1423,117 @@ public async getInterruptosTestPDF(): Promise<Buffer> {
     if (value === null || value === undefined) return '-';
     return String(value).trim();
   }
+
+
+public async generateAllWorkersPdf(): Promise<Buffer> {
+  const trabajadores = await this.getWorkers(this.baseUri);
+
+  const doc = new jsPDF('l', 'mm', 'a4'); // 'l' = landscape (horizontal) para tantas columnas
+
+  // Título
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(33, 37, 41);
+  doc.text('Listado de Trabajadores', 14, 15);
+
+  // Subtítulo con fecha
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  doc.text(`Generado: ${new Date().toLocaleDateString('es-ES')}`, 14, 22);
+
+  // Helpers reutilizados del Excel
+  const formatBoolean = (value: any): string => {
+    const strVal = value?.toString().trim() || '';
+    if (strVal === '1') return 'Sí';
+    if (strVal === '0') return 'No';
+    return '-';
+  };
+
+  const formatValue = (value: any): string => {
+    if (value === 0 || value === '0') return '0';
+    if (!value || value.toString().trim() === '') return '-';
+    return value.toString().trim();
+  };
+
+  // Columnas a mostrar en el PDF (selección de las más relevantes)
+  const headers = [
+    'Nombre y Apellidos',
+    'UEB',
+    'Unidad',
+    'Área',
+    'Cargo',
+    'Cat. Ocup.',
+    'Salario',
+    'Sexo',
+    'Edad',
+    'No. Identidad',
+    'PCC',
+    'UJC',
+  ];
+
+  const rows = trabajadores.map((t) => [
+    formatValue(t.Nombre),
+    formatValue(t.UEB),
+    formatValue(t.Unidad),
+    formatValue(t.Area),
+    formatValue(t.Cargo),
+    formatValue(t.CatOcup),
+    formatValue(t.Salario),
+    formatValue(t.Sexo),
+    formatValue(t.edad),
+    formatValue(t.No_Identidad),
+    formatBoolean(t.PCC),
+    formatBoolean(t.UJC),
+  ]);
+
+  (doc as any).autoTable({
+    startY: 28,
+    head: [headers],
+    body: rows,
+    theme: 'grid',
+    styles: {
+      fontSize: 7,
+      cellPadding: 2,
+      overflow: 'linebreak',
+    },
+    headStyles: {
+      fillColor: [101, 177, 196], // mismo color que el Excel (#65B1C4)
+      textColor: 255,
+      fontStyle: 'bold',
+      halign: 'center',
+    },
+    alternateRowStyles: {
+      fillColor: [245, 245, 245],
+    },
+    columnStyles: {
+      0: { cellWidth: 40 }, // Nombre
+      1: { cellWidth: 20 }, // UEB
+      2: { cellWidth: 25 }, // Unidad
+      3: { cellWidth: 25 }, // Área
+      4: { cellWidth: 30 }, // Cargo
+      5: { cellWidth: 15 }, // Cat. Ocup.
+      6: { cellWidth: 15 }, // Salario
+      7: { cellWidth: 10 }, // Sexo
+      8: { cellWidth: 10 }, // Edad
+      9: { cellWidth: 25 }, // No. Identidad
+      10: { cellWidth: 10 }, // PCC
+      11: { cellWidth: 10 }, // UJC
+    },
+    didDrawPage: (data: any) => {
+      // Número de página al pie
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(
+        `Página ${data.pageNumber}`,
+        doc.internal.pageSize.getWidth() / 2,
+        doc.internal.pageSize.getHeight() - 8,
+        { align: 'center' },
+      );
+    },
+  });
+
+  return Buffer.from(doc.output('arraybuffer'));
+}
+
+
 }
