@@ -1332,24 +1332,56 @@ public async getInterruptosTestPDF(): Promise<Buffer> {
   return await this.generateInterruptosPDF(fakeData, "AICA", "10-2025");
 }
 
-  private async fetchTrabajadoresFisicos(fecha: string): Promise<any[]> {
-    try {
-      const url = `${this.baseUri}/recursosHumanos/trabFisicoSigerh`;
-      const response = await axios.get(url, { params: { fecha } });
-      const data = response.data;
-      if (data && Array.isArray(data.Trabajadores)) {
-        return data.Trabajadores;
-      }
-      return [];
-    } catch (error) {
-      this.logger.error(
-        `Error fetching trabajadores físicos: ${error.message}`,
-      );
-      throw new InternalServerErrorException(
-        `Error al obtener los trabajadores físicos para la fecha ${fecha}`,
-      );
+private async fetchTrabajadoresFisicos(fecha: string): Promise<any[]> {
+  try {
+    // ✅ Forzar recarga de baseUri en cada llamada, igual que hace generateAusentismoExcel
+    this.getBaseUri();
+
+    if (!this.baseUri) {
+      throw new Error('SIGERH_BASE_PATH no está configurado en las variables de entorno.');
     }
+
+    // ✅ Convertir de YYYY-MM-DD → DD-MM-YYYY que es el formato que usa SIGERH
+    // El controller valida YYYY-MM-DD, pero la API externa espera DD-MM-YYYY
+    const [year, month, day] = fecha.split('-');
+    const fechaSigerh = `${day}-${month}-${year}`;
+
+    const url = `${this.baseUri}/recursosHumanos/trabFisicoSigerh`;
+
+    this.logger.log(`Llamando a SIGERH: ${url} con fecha=${fechaSigerh}`);
+
+    const response = await axios.get(url, {
+      params: { fecha: fechaSigerh },
+      // ✅ Timeout explícito para no esperar indefinidamente
+      timeout: 15000,
+    });
+
+    const data = response.data;
+
+    // ✅ Manejo robusto: la API puede devolver el array directamente
+    //    o envuelto en { Trabajadores: [...] }
+    if (Array.isArray(data)) {
+      return data;
+    }
+
+    if (data && Array.isArray(data.Trabajadores)) {
+      return data.Trabajadores;
+    }
+
+    this.logger.warn(
+      `trabFisicoSigerh devolvió estructura inesperada: ${JSON.stringify(data).slice(0, 200)}`,
+    );
+    return [];
+  } catch (error) {
+    this.logger.error(
+      `Error fetching trabajadores físicos para fecha ${fecha}: ${error.message}`,
+    );
+    // ✅ Re-lanzar con el mensaje original para que llegue al controller
+    throw new InternalServerErrorException(
+      error.message || `Error al obtener los trabajadores físicos para la fecha ${fecha}`,
+    );
   }
+}
 
  public async generateTrabajadoresFisicosExcel(fecha: string): Promise<Buffer> {
   // ✅ try/catch añadido — antes los errores de ExcelJS escapaban sin mensaje

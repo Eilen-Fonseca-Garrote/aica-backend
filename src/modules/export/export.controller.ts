@@ -274,28 +274,28 @@ async getInterruptosTestPDF(@Res({ passthrough: true }) res: Response) {
   },
 })
 @ApiResponse({
-  status: HttpStatus.INTERNAL_SERVER_ERROR,
-  description: 'Error interno al generar el reporte.',
-})
-@ApiResponse({
   status: HttpStatus.BAD_REQUEST,
   description: 'Fecha inválida o no proporcionada.',
 })
+@ApiResponse({
+  status: HttpStatus.INTERNAL_SERVER_ERROR,
+  description: 'Error interno al generar el reporte.',
+})
 @ApiProduces('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-// ❌ Eliminados: @Header('Content-Type', ...) y @HttpCode(HttpStatus.CREATED)
-// Se manejan dinámicamente con res.set() para evitar conflicto de headers
 @Get('excel/trabajadores-fisicos')
 async exportTrabajadoresFisicosExcel(
   @Query('fecha') fecha: string,
   @Res({ passthrough: true }) res: Response,
 ) {
-  if (!fecha) {
+  // Validación: parámetro presente
+  if (!fecha || fecha.trim() === '') {
     throw new HttpException(
       'El parámetro "fecha" es obligatorio.',
       HttpStatus.BAD_REQUEST,
     );
   }
 
+  // Validación: formato YYYY-MM-DD
   const fechaRegex = /^\d{4}-\d{2}-\d{2}$/;
   if (!fechaRegex.test(fecha)) {
     throw new HttpException(
@@ -304,10 +304,18 @@ async exportTrabajadoresFisicosExcel(
     );
   }
 
+  // Validación: fecha coherente
+  const fechaDate = new Date(fecha);
+  if (isNaN(fechaDate.getTime())) {
+    throw new HttpException(
+      'La fecha proporcionada no es válida.',
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+
   try {
     const buffer = await this.exportService.generateTrabajadoresFisicosExcel(fecha);
 
-    // ✅ Un único res.set() maneja Content-Type y Content-Disposition juntos
     res.set({
       'Content-Type':
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -318,7 +326,6 @@ async exportTrabajadoresFisicosExcel(
     stream.push(buffer);
     stream.push(null);
 
-    // ✅ 200 OK es el código correcto para descarga de archivo
     return new StreamableFile(stream);
   } catch (error) {
     throw new HttpException(
