@@ -56,6 +56,7 @@ export class ExportService {
     }
   }
 
+  // aqui añadirle fecha de alta y baja
   public async generateAllWorkersExcel() {
     try {
       const trabajadores = await this.getWorkers(this.baseUri);
