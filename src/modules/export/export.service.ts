@@ -1351,15 +1351,21 @@ public async getInterruptosTestPDF(): Promise<Buffer> {
     }
   }
 
-  public async generateTrabajadoresFisicosExcel(
-    fecha: string,
-  ) {
+ public async generateTrabajadoresFisicosExcel(fecha: string): Promise<Buffer> {
+  // ✅ try/catch añadido — antes los errores de ExcelJS escapaban sin mensaje
+  try {
     const trabajadores = await this.fetchTrabajadoresFisicos(fecha);
+
+    // ✅ Guard explícito para lista vacía
+    if (!trabajadores || trabajadores.length === 0) {
+      throw new Error(
+        `No se encontraron trabajadores físicos para la fecha ${fecha}.`,
+      );
+    }
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Trabajadores');
 
-    // Definir columnas según el mapeo requerido
     worksheet.columns = [
       { header: 'Identificación', key: 'id', width: 20 },
       { header: 'Nombre', key: 'nombre', width: 25 },
@@ -1370,7 +1376,7 @@ public async getInterruptosTestPDF(): Promise<Buffer> {
       { header: 'Dirección', key: 'direccion', width: 30 },
     ];
 
-    // Estilo para encabezados
+    // Estilo encabezados
     worksheet.getRow(1).eachCell((cell) => {
       cell.fill = {
         type: 'pattern',
@@ -1387,7 +1393,6 @@ public async getInterruptosTestPDF(): Promise<Buffer> {
       };
     });
 
-    // Agregar filas manteniendo el orden del API
     trabajadores.forEach((trab) => {
       const row = worksheet.addRow({
         id: this.cleanValue(trab.TrbNumIden),
@@ -1409,15 +1414,20 @@ public async getInterruptosTestPDF(): Promise<Buffer> {
       });
     });
 
-    // Congelar la primera fila
     worksheet.views = [{ state: 'frozen', ySplit: 1 }];
     worksheet.autoFilter = {
       from: 'A1',
       to: `G${worksheet.rowCount}`,
     };
 
-    return await workbook.xlsx.writeBuffer();
+    // ✅ Tipado explícito — writeBuffer() devuelve ArrayBuffer, Buffer.from() lo normaliza
+    const arrayBuffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(arrayBuffer);
+  } catch (error) {
+    // Re-lanza con mensaje limpio para que el controller lo capture correctamente
+    throw new Error(error.message || 'Error generando el Excel de trabajadores físicos.');
   }
+}
 
   private cleanValue(value: any): string {
     if (value === null || value === undefined) return '-';
