@@ -1454,6 +1454,114 @@ private async fetchTrabajadoresFisicos(fecha: string): Promise<any[]> {
     throw new Error(error.message || 'Error generando el Excel de trabajadores físicos.');
   }
 }
+public async generateTrabajadoresFisicosPdf(fecha: string): Promise<Buffer> {
+  const trabajadores = await this.fetchTrabajadoresFisicos(fecha);
+
+  if (!trabajadores || trabajadores.length === 0) {
+    throw new Error(
+      `No se encontraron trabajadores físicos para la fecha ${fecha}.`,
+    );
+  }
+
+  const doc = new jsPDF('l', 'mm', 'a4'); // landscape — 7 columnas caben bien
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  // ── Encabezado ────────────────────────────────────────────────────────────
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(33, 37, 41);
+  doc.text('Trabajadores Físicos', 14, 14);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  doc.text(
+    `Fecha: ${fecha}  |  Total de trabajadores: ${trabajadores.length}  |  Generado: ${new Date().toLocaleDateString('es-ES')}`,
+    14,
+    21,
+  );
+
+  // Línea separadora con el color del proyecto (#65B1C4)
+  doc.setDrawColor(101, 177, 196);
+  doc.setLineWidth(0.5);
+  doc.line(14, 24, pageWidth - 14, 24);
+
+  // ── Tabla ─────────────────────────────────────────────────────────────────
+  const headers = [
+    'Identificación',
+    'Nombre',
+    'Apellido 1',
+    'Apellido 2',
+    'UEB',
+    'Área',
+    'Dirección',
+  ];
+
+  const rows = trabajadores.map((t) => [
+    this.cleanValue(t.TrbNumIden),
+    this.cleanValue(t.TrbNom),
+    this.cleanValue(t.TrbAp1),
+    this.cleanValue(t.TrbAp2),
+    this.cleanValue(t.UEB),
+    this.cleanValue(t.AREA),
+    this.cleanValue(t.DIRECCION),
+  ]);
+
+  (doc as any).autoTable({
+    startY: 28,
+    head: [headers],
+    body: rows,
+    theme: 'grid',
+    tableWidth: pageWidth - 28,
+    styles: {
+      fontSize: 8,
+      cellPadding: 2.5,
+      overflow: 'linebreak',
+      valign: 'middle',
+    },
+    headStyles: {
+      fillColor: [101, 177, 196], // mismo color que el Excel del proyecto
+      textColor: 255,
+      fontStyle: 'bold',
+      halign: 'center',
+    },
+    alternateRowStyles: {
+      fillColor: [245, 245, 245],
+    },
+    columnStyles: {
+      0: { cellWidth: 32, halign: 'center' }, // Identificación
+      1: { cellWidth: 38 },                   // Nombre
+      2: { cellWidth: 32 },                   // Apellido 1
+      3: { cellWidth: 32 },                   // Apellido 2
+      4: { cellWidth: 22, halign: 'center' }, // UEB
+      5: { cellWidth: 55 },                   // Área
+      6: { cellWidth: 'auto' },               // Dirección — toma el espacio restante
+    },
+    didDrawPage: (data: any) => {
+      // Encabezado en páginas de continuación
+      if (data.pageNumber > 1) {
+        doc.setFontSize(9);
+        doc.setTextColor(100, 100, 100);
+        doc.setFont('helvetica', 'italic');
+        doc.text(`Trabajadores Físicos — ${fecha} (continuación)`, 14, 10);
+      }
+      // Pie de página
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.setFont('helvetica', 'normal');
+      doc.text(
+        `Página ${data.pageNumber}`,
+        pageWidth / 2,
+        pageHeight - 6,
+        { align: 'center' },
+      );
+    },
+  });
+
+  return Buffer.from(doc.output('arraybuffer'));
+}
+
 
   private cleanValue(value: any): string {
     if (value === null || value === undefined) return '-';
