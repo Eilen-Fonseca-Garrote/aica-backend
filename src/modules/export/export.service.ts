@@ -1428,20 +1428,8 @@ public async getInterruptosTestPDF(): Promise<Buffer> {
 public async generateAllWorkersPdf(): Promise<Buffer> {
   const trabajadores = await this.getWorkers(this.baseUri);
 
-  const doc = new jsPDF('l', 'mm', 'a4'); // 'l' = landscape (horizontal) para tantas columnas
+  const doc = new jsPDF('l', 'mm', 'a3'); // A3 landscape da más ancho que A4
 
-  // Título
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.setTextColor(33, 37, 41);
-  doc.text('Listado de Trabajadores', 14, 15);
-
-  // Subtítulo con fecha
-  doc.setFontSize(10);
-  doc.setTextColor(100, 100, 100);
-  doc.text(`Generado: ${new Date().toLocaleDateString('es-ES')}`, 14, 22);
-
-  // Helpers reutilizados del Excel
   const formatBoolean = (value: any): string => {
     const strVal = value?.toString().trim() || '';
     if (strVal === '1') return 'Sí';
@@ -1455,81 +1443,160 @@ public async generateAllWorkersPdf(): Promise<Buffer> {
     return value.toString().trim();
   };
 
-  // Columnas a mostrar en el PDF (selección de las más relevantes)
-  const headers = [
-    'Nombre y Apellidos',
-    'UEB',
-    'Unidad',
-    'Área',
-    'Cargo',
-    'Cat. Ocup.',
-    'Salario',
-    'Sexo',
-    'Edad',
-    'No. Identidad',
-    'PCC',
-    'UJC',
+  // ─── Agrupación de columnas en bloques temáticos ───────────────────────────
+
+  const columnGroups = [
+    {
+      title: 'Datos Personales',
+      headers: ['Nombre y Apellidos', 'Nombres', 'Apellido 1', 'Apellido 2', 'No. Identidad', 'Edad', 'Sexo', 'Color de Piel', 'Dirección'],
+      extractor: (t: any) => [
+        formatValue(t.Nombre),
+        formatValue(t.Nombres),
+        formatValue(t['1erApellido']),
+        formatValue(t['2doApellido']),
+        formatValue(t.No_Identidad),
+        formatValue(t.edad),
+        formatValue(t.Sexo),
+        formatValue(t.ColorPiel),
+        formatValue(t['Dirección Oficial']),
+      ],
+    },
+    {
+      title: 'Datos Laborales',
+      headers: ['Nombre y Apellidos', 'UEB', 'Unidad', 'Área', 'Cargo', 'Cat. Ocupacional', 'Grupo Escala', 'Salario', 'Cód. Marcaje', 'Exp. Laboral', 'Desig. Func.'],
+      extractor: (t: any) => [
+        formatValue(t.Nombre),
+        formatValue(t.UEB),
+        formatValue(t.Unidad),
+        formatValue(t.Area),
+        formatValue(t.Cargo),
+        formatValue(t.CatOcup),
+        formatValue(t['Grp Escala']),
+        formatValue(t.Salario),
+        formatValue(t['Código Tarjeta Marcaje']),
+        formatValue(t.Exp_Lab),
+        formatValue(t.Desig_Func),
+      ],
+    },
+    {
+      title: 'Datos Académicos y Otros',
+      headers: ['Nombre y Apellidos', 'Nivel Escolar', 'Niv. Esc. Cargo', 'Especialidad', 'Graduado de', 'Master/Doct', 'No. Resolución', 'PCC', 'UJC', 'Estud.', 'Comp.'],
+      extractor: (t: any) => [
+        formatValue(t.Nombre),
+        formatValue(t.NivelEscolar),
+        formatValue(t.NivEsc_Cargo),
+        formatValue(t.Especialidad),
+        formatValue(t['Graduado_de(Carrera)']),
+        formatValue(t.Master_Doct),
+        formatValue(t.NoResolucion),
+        formatBoolean(t.PCC),
+        formatBoolean(t.UJC),
+        formatBoolean(t.Estud),
+        formatBoolean(t.Comp),
+      ],
+    },
+    {
+      title: 'Datos Complementarios',
+      headers: ['Nombre y Apellidos', '1Cam-2min-3Otr', 'Cumple Req', '1Simult-2CobDif', 'Jubilado Cont', 'Tiene Auto', 'Imprescindible', 'Trb Ubic Defensa', 'Talla Camisa', 'Talla Pantalón', 'Talla Zapato'],
+      extractor: (t: any) => [
+        formatValue(t.Nombre),
+        formatValue(t['1CAM-2MIN-3Otr']),
+        formatValue(t.CumpleReq),
+        formatValue(t['1Simult-2CobDif']),
+        formatBoolean(t.JubiladoCont),
+        formatBoolean(t.Aut),
+        formatBoolean(t.Imprescindible),
+        formatValue(t.Defensa),
+        formatValue(t['Talla_Camisa']),
+        formatValue(t['Talla_Pantalon']),
+        formatValue(t['Talla_Zapato']),
+      ],
+    },
   ];
 
-  const rows = trabajadores.map((t) => [
-    formatValue(t.Nombre),
-    formatValue(t.UEB),
-    formatValue(t.Unidad),
-    formatValue(t.Area),
-    formatValue(t.Cargo),
-    formatValue(t.CatOcup),
-    formatValue(t.Salario),
-    formatValue(t.Sexo),
-    formatValue(t.edad),
-    formatValue(t.No_Identidad),
-    formatBoolean(t.PCC),
-    formatBoolean(t.UJC),
-  ]);
+  // ─── Estilos comunes ───────────────────────────────────────────────────────
 
-  (doc as any).autoTable({
-    startY: 28,
-    head: [headers],
-    body: rows,
-    theme: 'grid',
-    styles: {
-      fontSize: 7,
-      cellPadding: 2,
-      overflow: 'linebreak',
-    },
-    headStyles: {
-      fillColor: [101, 177, 196], // mismo color que el Excel (#65B1C4)
-      textColor: 255,
-      fontStyle: 'bold',
-      halign: 'center',
-    },
-    alternateRowStyles: {
-      fillColor: [245, 245, 245],
-    },
-    columnStyles: {
-      0: { cellWidth: 40 }, // Nombre
-      1: { cellWidth: 20 }, // UEB
-      2: { cellWidth: 25 }, // Unidad
-      3: { cellWidth: 25 }, // Área
-      4: { cellWidth: 30 }, // Cargo
-      5: { cellWidth: 15 }, // Cat. Ocup.
-      6: { cellWidth: 15 }, // Salario
-      7: { cellWidth: 10 }, // Sexo
-      8: { cellWidth: 10 }, // Edad
-      9: { cellWidth: 25 }, // No. Identidad
-      10: { cellWidth: 10 }, // PCC
-      11: { cellWidth: 10 }, // UJC
-    },
-    didDrawPage: (data: any) => {
-      // Número de página al pie
-      doc.setFontSize(8);
-      doc.setTextColor(150);
-      doc.text(
-        `Página ${data.pageNumber}`,
-        doc.internal.pageSize.getWidth() / 2,
-        doc.internal.pageSize.getHeight() - 8,
-        { align: 'center' },
-      );
-    },
+  const commonStyles = {
+    fontSize: 7,
+    cellPadding: 2,
+    overflow: 'linebreak' as const,
+  };
+
+  const headStyles = {
+    fillColor: [101, 177, 196] as [number, number, number],
+    textColor: 255,
+    fontStyle: 'bold' as const,
+    halign: 'center' as const,
+  };
+
+  const alternateRowStyles = {
+    fillColor: [245, 245, 245] as [number, number, number],
+  };
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  // ─── Renderizado de cada grupo ─────────────────────────────────────────────
+
+  columnGroups.forEach((group, index) => {
+    // Nueva página para cada grupo (excepto el primero)
+    if (index > 0) {
+      doc.addPage();
+    }
+
+    // Encabezado de sección
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(33, 37, 41);
+    doc.text(`Listado de Trabajadores — ${group.title}`, 14, 14);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text(
+      `Total de trabajadores: ${trabajadores.length}  |  Generado: ${new Date().toLocaleDateString('es-ES')}`,
+      14,
+      21,
+    );
+
+    // Línea separadora
+    doc.setDrawColor(101, 177, 196);
+    doc.setLineWidth(0.5);
+    doc.line(14, 24, pageWidth - 14, 24);
+
+    const rows = trabajadores.map((t) => group.extractor(t));
+
+    (doc as any).autoTable({
+      startY: 28,
+      head: [group.headers],
+      body: rows,
+      theme: 'grid',
+      styles: commonStyles,
+      headStyles,
+      alternateRowStyles,
+      // Distribuir el ancho disponible equitativamente entre columnas
+      tableWidth: pageWidth - 28,
+      didDrawPage: (data: any) => {
+        // Encabezado en páginas de continuación (cuando la tabla ocupa más de 1 página)
+        if (data.pageNumber > 1) {
+          doc.setFontSize(9);
+          doc.setTextColor(100, 100, 100);
+          doc.setFont('helvetica', 'italic');
+          doc.text(`${group.title} (continuación)`, 14, 10);
+        }
+
+        // Pie de página con número
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.setFont('helvetica', 'normal');
+        doc.text(
+          `Página ${data.pageNumber}  |  ${group.title}`,
+          pageWidth / 2,
+          pageHeight - 6,
+          { align: 'center' },
+        );
+      },
+    });
   });
 
   return Buffer.from(doc.output('arraybuffer'));
