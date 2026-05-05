@@ -44,31 +44,31 @@ export class AusenciasController {
     return res.status(HttpStatus.OK).json(result);
   }
 
-/*   @Post('filtrar')
-  filtrarTrabajadores(@Body() filtersDto: FiltersDto) {
-    return this.ausenciasService.obtenerFiltros(filtersDto);
-  } */
-  @Get('interruptos')
-  async getTrabajadoresInterruptos(
-    @Query('ueb') ueb: number,
-    @Query('fecha') fecha: string,
-  ) {
-    if (!ueb || !fecha) {
-      throw new HttpException(
-        'Los parámetros UEB y fecha son obligatorios.',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    const fechaRegex = /^(0[1-9]|1[0-2])-\d{4}$/; // Formato MM-YYYY
-    if (!fechaRegex.test(fecha)) {
-      throw new HttpException(
-        'Formato de fecha inválido.',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-    return await this.ausenciasService.cantTrabajadoresInterruptos(ueb, fecha);
+  // ✅ ueb debe ser string para que parseInt funcione correctamente
+// El decorador @Query siempre devuelve string aunque lo declares como number
+@Get('interruptos')
+async getTrabajadoresInterruptos(
+  @Query('ueb') ueb: string,   // ← era: ueb: number
+  @Query('fecha') fecha: string,
+) {
+  if (ueb === undefined || ueb === null || !fecha) {
+    throw new HttpException(
+      'Los parámetros UEB y fecha son obligatorios.',
+      HttpStatus.BAD_REQUEST,
+    );
   }
+
+  const fechaRegex = /^(0[1-9]|1[0-2])-\d{4}$/;
+  if (!fechaRegex.test(fecha)) {
+    throw new HttpException(
+      'Formato de fecha inválido.',
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+
+  // ✅ Convertir a number aquí, después de recibir como string
+  return await this.ausenciasService.cantTrabajadoresInterruptos(parseInt(ueb, 10), fecha);
+}
 
 
   // Agregar endpoint de prueba

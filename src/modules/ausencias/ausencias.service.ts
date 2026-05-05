@@ -269,101 +269,154 @@ export class AusenciasService {
     };
   }
 
+  // ✅ Corregido: fetchDirecciones ahora filtra entradas sin áreas para evitar filas vacías en el reporte
   private async fetchDirecciones(ueb: number): Promise<any[]> {
+  try {
     const response = await axios.get(
       `${this.baseUri}/recursosHumanos/direccionesUEB?ueb=${ueb}`,
     );
-    return response.data;
-  }
 
+    const data = response.data;
+    if (!Array.isArray(data)) return [];
+
+    // ✅ La API devuelve [{ Unidad, Area: [{EstNV1, Unidad, Area, EstNV2}] }]
+    // Filtrar entradas sin áreas para no generar filas vacías en el reporte
+    return data.filter((dir: any) => Array.isArray(dir.Area) && dir.Area.length > 0);
+  } catch (error) {
+    this.logger.error(`Error fetching direcciones para ueb=${ueb}: ${error.message}`);
+    return [];
+  }
+}
+
+// ✅ Corregido: 'anno' en minúscula según la API, y manejo de errores para cada fetch individual
   private async procesarUEB(
-    ueb: number,
-    mes: number,
-    anno: number,
-    direcciones: any[],
-  ): Promise<{
-    interruptos: InterruptosEntry[];
-    totales: { [key: string]: TotalResult };
-    totalReub: TotalResult;
-    totalCovid: TotalResult;
-    totalProd25: TotalResult;
-    totalProd48: TotalResult;
-  }> {
-    const [
-      interruptosReub,
-      interruptosCovid,
-      interruptosProd25,
-      interruptosProd48,
-    ] = await Promise.all([
+  ueb: number,
+  mes: number,
+  anno: number,
+  direcciones: any[],
+): Promise<{
+  interruptos: InterruptosEntry[];
+  totales: { [key: string]: TotalResult };
+  totalReub: TotalResult;
+  totalCovid: TotalResult;
+  totalProd25: TotalResult;
+  totalProd48: TotalResult;
+}> {
+  // ✅ Llamadas paralelas — 'anno' en minúscula
+  const [interruptosReub, interruptosCovid, interruptosProd25, interruptosProd48] =
+    await Promise.all([
       this.fetchInterruptos('interruptoReubicacion', ueb, mes, anno),
       this.fetchInterruptos('interruptoCovid', ueb, mes, anno),
       this.fetchInterruptos('interrupto', ueb, mes, anno),
       this.fetchInterruptos('interrupto60', ueb, mes, anno),
     ]);
 
-    const totalReub = this.interruptosTotal(interruptosReub);
-    const totalCovid = this.interruptosTotal(interruptosCovid);
-    const totalProd25 = this.interruptosTotal(interruptosProd25);
-    const totalProd48 = this.interruptosTotal(interruptosProd48);
+  this.logger.log(
+    `UEB ${ueb}: reub=${interruptosReub.length} covid=${interruptosCovid.length} ` +
+    `prod25=${interruptosProd25.length} prod48=${interruptosProd48.length}`,
+  );
 
-    const interruptos = this.getInterruptos(
-      direcciones,
-      interruptosCovid,
-      interruptosReub,
-      interruptosProd25,
-      interruptosProd48,
-    );
+  const totalReub  = this.interruptosTotal(interruptosReub);
+  const totalCovid = this.interruptosTotal(interruptosCovid);
+  const totalProd25 = this.interruptosTotal(interruptosProd25);
+  const totalProd48 = this.interruptosTotal(interruptosProd48);
 
-    return {
-      interruptos,
-      totales: {
-        Reubic: totalReub,
-        Covid: totalCovid,
-        Prod25: totalProd25,
-        Prod48: totalProd48,
-      },
-      totalReub,
-      totalCovid,
-      totalProd25,
-      totalProd48,
-    };
-  }
+  const interruptos = this.getInterruptos(
+    direcciones,
+    interruptosCovid,
+    interruptosReub,
+    interruptosProd25,
+    interruptosProd48,
+  );
 
-  private async fetchInterruptos(
-    tipo: string,
-    ueb: number,
-    mes: number,
-    anno: number,
-  ): Promise<Interrupto[]> {
+  return {
+    interruptos,
+    totales: {
+      Reubic: totalReub,
+      Covid: totalCovid,
+      Prod25: totalProd25,
+      Prod48: totalProd48,
+    },
+    totalReub,
+    totalCovid,
+    totalProd25,
+    totalProd48,
+  };
+}
+
+  // ✅ Corregido: 'anno' en minúscula según la API
+private async fetchInterruptos(
+  tipo: string,
+  ueb: number,
+  mes: number,
+  anno: number,
+): Promise<Interrupto[]> {
+  try {
     const response = await axios.get(
       `${this.baseUri}/recursosHumanos/${tipo}?ueb=${ueb}&mes=${mes}&anno=${anno}`,
     );
-    return response.data;
-  }
 
-  buscarInterrupto(dir: string, intArray: Interrupto[]): number {
-    const found = intArray.find((int) => int.EstNV1 === dir);
-    return found ? found.Total_Trabajadores : 0;
-  }
+    const data = response.data;
+    if (!Array.isArray(data)) return [];
 
-  getInterruptos(
-    direcciones: any[],
-    covid: Interrupto[],
-    reub: Interrupto[],
-    producc25: Interrupto[],
-    producc48: Interrupto[],
-  ): InterruptosEntry[] {
-    return direcciones.map((dir) => {
-      const codigoDir = dir.Area?.[0]?.EstNV1 || null;
-      return {
-        Direccion: dir.Unidad.trim(),
-        covid: this.buscarInterrupto(codigoDir, covid),
-        reubicados: this.buscarInterrupto(codigoDir, reub),
-        produccion25: this.buscarInterrupto(codigoDir, producc25),
-        produccion48: this.buscarInterrupto(codigoDir, producc48),
-      };
+    // ✅ Normalizar: la API devuelve "UEB/Dirección" y puede variar entre endpoints
+    return data.map((item: any) => ({
+      EstNV1: item.EstNV1,
+      'UEB/Dirección': (item['UEB/Dirección'] || item.direcciones || '').trim(),
+      Total_Trabajadores: item.Total_Trabajadores ?? item.total ?? 0,
+      Femenino: item.Femenino ?? item.femenino ?? 0,
+      Masculino: item.Masculino ?? item.masculino ?? 0,
+    }));
+  } catch (error) {
+    this.logger.error(`Error fetching ${tipo} para ueb=${ueb}: ${error.message}`);
+    return []; // ✅ Devolver vacío en lugar de romper toda la cadena
+  }
+}
+
+// ✅ Corregido: matching por EstNV1 numérico, no por nombre de cadena
+getInterruptos(
+  direcciones: any[],
+  covid: Interrupto[],
+  reub: Interrupto[],
+  producc25: Interrupto[],
+  producc48: Interrupto[],
+): InterruptosEntry[] {
+  const result: InterruptosEntry[] = [];
+
+  direcciones.forEach((dir) => {
+    // direccionesUEB devuelve { Unidad, Area: [{EstNV1, Area, ...}] }
+    const dirName = dir.Unidad?.trim() || '';
+    const areas: any[] = dir.Area || [];
+
+    // Sumar todos los EstNV1 de las áreas de esta dirección
+    let covidTotal = 0, reubTotal = 0, prod25Total = 0, prod48Total = 0;
+
+    areas.forEach((area) => {
+      const estNV1 = area.EstNV1;
+      covidTotal  += this.buscarInterrupto(estNV1, covid);
+      reubTotal   += this.buscarInterrupto(estNV1, reub);
+      prod25Total += this.buscarInterrupto(estNV1, producc25);
+      prod48Total += this.buscarInterrupto(estNV1, producc48);
     });
-  }
+
+    result.push({
+      Direccion: dirName,
+      covid: covidTotal,
+      reubicados: reubTotal,
+      produccion25: prod25Total,
+      produccion48: prod48Total,
+    });
+  });
+
+  return result;
+}
+
+// ✅ Corregido: buscar por EstNV1 numérico (no por string)
+buscarInterrupto(estNV1: number, intArray: Interrupto[]): number {
+  const found = intArray.find((int) => Number(int.EstNV1) === Number(estNV1));
+  return found ? (found.Total_Trabajadores ?? 0) : 0;
+}
+ 
 
   interruptosTotal(interruptos: Interrupto[]): TotalResult {
     return interruptos.reduce(
@@ -405,68 +458,6 @@ export class AusenciasService {
     return result;
   }
 
-  //Filtrar trabajadores por ueb, dirección, área, municipio, reparto, sexo, cantidad de hijos
-  //filtrar trabajadores también por grupo sanguíneo, nivel escolar, raza, carrera
-
- /* public obtenerFiltros(filters: FiltersDto): Array<[string, string]> {
-    const resultado: Array<[string, string]> = [];
-
-    if (filters.direccionFSelect && filters.uebSelect) {
-      const direccion = this.getDireccionById(
-        filters.direccionFSelect,
-        filters.uebSelect,
-      );
-      resultado.push(['Dirección', direccion]);
-    }
-
-    if (filters.cargo) {
-      resultado.push(['Cargo', filters.cargo.trim()]);
-    }
-
-    if (filters.sexoSelect) {
-      resultado.push(['Sexo', filters.sexoSelect.trim()]);
-    }
-
-    if (filters.edad && filters.edadOperator) {
-      resultado.push(['Edad', `${filters.edadOperator}${filters.edad}`]);
-    }
-
-    if (filters.carrera) {
-      resultado.push(['Carrera', filters.carrera.trim()]);
-    }
-
-    if (filters.municipioSelect) {
-      resultado.push(['Municipio', filters.municipioSelect.trim()]);
-    }
-
-    if (filters.grupoFactor) {
-      resultado.push(['Grupo Sanguíneo', filters.grupoFactor.trim()]);
-    }
-
-    if (filters.hijos !== undefined) {
-      resultado.push(['Cantidad de Hijos', filters.hijos.toString()]);
-    }
-
-    if (filters.pcc) {
-      resultado.push(['PCC', 'pertenece']);
-    }
-
-    if (filters.ujc) {
-      resultado.push(['UJC', 'pertenece']);
-    }
-
-    if (filters.uebSelect) {
-      resultado.push(['UEB', filters.uebSelect.trim()]);
-    }
-
-    // Agrega más filtros según sea necesario
-
-    return resultado;
-  } */
-
- /* private getDireccionById(direccionId: string, uebId: string): string {
-    // Simula la obtención de la dirección por ID
-    return `Dirección Obtenida para ID ${direccionId} y UEB ${uebId}`;
-  } */
+  
   
 }
