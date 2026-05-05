@@ -112,6 +112,9 @@ export class ExportService {
         { header: 'Talla Camisa', key: 'tallaCamisa', width: 20 },
         { header: 'Talla Pantalón', key: 'tallaPantalon', width: 20 },
         { header: 'Talla Zapato', key: 'tallaZapato', width: 20 },
+        // Añadir al final del array worksheet.columns, después de tallaZapato:
+        { header: 'Fecha Alta', key: 'fechaAlta', width: 22 },
+        { header: 'Fecha Baja', key: 'fechaBaja', width: 22 }, //comprobar si está
       ];
 
       // Estilo para encabezados
@@ -141,6 +144,21 @@ export class ExportService {
         if (strVal === '0') return 'No';
         return '-'; // Para valores vacíos o no reconocidos
       };
+
+      // Función auxiliar para formatear fechas ISO → DD/MM/YYYY
+      const formatDate = (value: any): string => {
+        if (!value || value.toString().trim() === '') return '-';
+        try {
+          const date = new Date(value);
+          if (isNaN(date.getTime())) return '-';
+          const day = String(date.getDate()).padStart(2, '0');
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const year = date.getFullYear();
+          return `${day}/${month}/${year}`;
+          } catch {
+           return '-';
+          }
+        };
 
       // Función auxiliar para manejar campos vacíos y valores 0
       const formatValue = (value) => {
@@ -195,6 +213,9 @@ export class ExportService {
           tallaCamisa: formatValue(trabajador['Talla_Camisa']),
           tallaPantalon: formatValue(trabajador['Talla_Pantalon']),
           tallaZapato: formatValue(trabajador['Talla_Zapato']),
+          // Añadir al final del objeto dentro de worksheet.addRow, después de tallaZapato:
+          fechaAlta: formatDate(trabajador['Alta Empresa'] ?? trabajador['AsgFecAlta']),
+          fechaBaja: formatDate(trabajador['AsgFecBaja'] ?? trabajador['Fecha Baja']),
         });
 
         row.eachCell({ includeEmpty: true }, (cell) => {
@@ -219,7 +240,7 @@ export class ExportService {
       // Auto filtro
       worksheet.autoFilter = {
         from: 'A1',
-        to: `AM${worksheet.rowCount}`, //En caso de añadirse o eliminarse columnas, modificar el valor 'AM'
+        to: `AO${worksheet.rowCount}`,//En caso de añadirse o eliminarse columnas, modificar el valor 'AM'
       };
 
       const buffer = await workbook.xlsx.writeBuffer();
@@ -1605,23 +1626,41 @@ public async generateAllWorkersPdf(): Promise<Buffer> {
         formatValue(t['Dirección Oficial']),
       ],
     },
+    // cambios en datos laborales
     {
-      title: 'Datos Laborales',
-      headers: ['Nombre y Apellidos', 'UEB', 'Unidad', 'Área', 'Cargo', 'Cat. Ocupacional', 'Grupo Escala', 'Salario', 'Cód. Marcaje', 'Exp. Laboral', 'Desig. Func.'],
-      extractor: (t: any) => [
-        formatValue(t.Nombre),
-        formatValue(t.UEB),
-        formatValue(t.Unidad),
-        formatValue(t.Area),
-        formatValue(t.Cargo),
-        formatValue(t.CatOcup),
-        formatValue(t['Grp Escala']),
-        formatValue(t.Salario),
-        formatValue(t['Código Tarjeta Marcaje']),
-        formatValue(t.Exp_Lab),
-        formatValue(t.Desig_Func),
-      ],
-    },
+  title: 'Datos Laborales',
+  headers: [
+    'Nombre y Apellidos', 'UEB', 'Unidad', 'Área', 'Cargo',
+    'Cat. Ocupacional', 'Grupo Escala', 'Salario',
+    'Cód. Marcaje', 'Exp. Laboral', 'Fecha Alta', 'Fecha Baja',
+  ],
+  extractor: (t: any) => {
+    const formatDate = (value: any): string => {
+      if (!value || value.toString().trim() === '') return '-';
+      try {
+        const date = new Date(value);
+        if (isNaN(date.getTime())) return '-';
+        return `${String(date.getDate()).padStart(2,'0')}/${String(date.getMonth()+1).padStart(2,'0')}/${date.getFullYear()}`;
+      } catch { return '-'; }
+    };
+    return [
+      formatValue(t.Nombre),
+      formatValue(t.UEB),
+      formatValue(t.Unidad),
+      formatValue(t.Area),
+      formatValue(t.Cargo),
+      formatValue(t.CatOcup),
+      formatValue(t['Grp Escala']),
+      formatValue(t.Salario),
+      formatValue(t['Código Tarjeta Marcaje']),
+      formatValue(t.Exp_Lab),
+      formatDate(t['Alta Empresa'] ?? t['AsgFecAlta']),
+      formatDate(t['AsgFecBaja'] ?? t['Fecha Baja']),
+    ];
+  },
+},
+
+
     {
       title: 'Datos Académicos y Otros',
       headers: ['Nombre y Apellidos', 'Nivel Escolar', 'Niv. Esc. Cargo', 'Especialidad', 'Graduado de', 'Master/Doct', 'No. Resolución', 'PCC', 'UJC', 'Estud.', 'Comp.'],
