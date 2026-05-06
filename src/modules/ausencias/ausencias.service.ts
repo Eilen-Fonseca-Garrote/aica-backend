@@ -135,139 +135,94 @@ export class AusenciasService {
       throw new InternalServerErrorException('Error al obtener claves de ausentismo.');
     }
   }
-  // Listar trabajadores interruptos dados fecha y ueb
-  /*   public async listTrabajadoresInterruptos(ueb: string, fecha: string) {
-    
-
-    try {
-      this.logger.log(`Solicitando trabajadores interruptos para UEB: ${ueb}, Fecha: ${fecha}`);
-      const client = axios.create({ baseURL: 'http://example.com/api' });
-
-      const trabajadores = await client.get(
-        `/recursosHumanos/trabajadoresInterruptos?ueb=${ueb}&fecha=${fecha}`,
-      );
-
-      if (!trabajadores.data || !Array.isArray(trabajadores.data)) {
-        throw new InternalServerErrorException('La respuesta del servicio no es válida.');
-      }
-
-      this.logger.log(`Respuesta obtenida: ${JSON.stringify(trabajadores.data)}`);
-      return trabajadores.data;
-    } catch (error) {
-      this.logger.error(`Error al obtener trabajadores interruptos: ${error.message}`);
-
-      if (error.response) {
-        throw new InternalServerErrorException(
-          `Error del servicio externo: ${error.response.status} - ${error.response.data}`,
-        );
-      } else if (error.request) {
-        throw new InternalServerErrorException('No se pudo conectar al servicio externo.');
-      } else {
-        throw new InternalServerErrorException('Error inesperado: ' + error.message);
-      }
-    }
-  } */
+  
 
   async cantTrabajadoresInterruptos(ueb: number, fecha: string): Promise<any> {
-    const [mes, anno] = fecha.split('-').map((part) => parseInt(part, 10));
-    this.getBaseUri();
+  const [mes, anno] = fecha.split('-').map((part) => parseInt(part, 10));
+  this.getBaseUri();
 
-    let interruptosAica: InterruptosEntry[] | null = null;
-    let interruptosLiorad: InterruptosEntry[] | null = null;
-    let interruptosJT: InterruptosEntry[] | null = null;
-    let interruptosCitox: InterruptosEntry[] | null = null;
-    let interruptosSH: InterruptosEntry[] | null = null;
-    let interruptos: InterruptosEntry[] | null = null;
+  if (ueb === 0) {
+    // ✅ Todas las UEBs en paralelo para mejor rendimiento
+    const [
+      [direccionesAica, direccionesLiorad, direccionesJT, direccionesCitox, direccionesSH],
+      
+    ] = await Promise.all([
+      Promise.all([
+        this.fetchDirecciones(16),
+        this.fetchDirecciones(25),
+        this.fetchDirecciones(55),
+        this.fetchDirecciones(100),
+        this.fetchDirecciones(57),
+      ]),
+    ]);
 
-    let totalReub: TotalResult = { Total: 0, F: 0, M: 0 };
-    let totalCovid: TotalResult = { Total: 0, F: 0, M: 0 };
-    let totalProd25: TotalResult = { Total: 0, F: 0, M: 0 };
-    let totalProd48: TotalResult = { Total: 0, F: 0, M: 0 };
+    const [resAica, resLiorad, resJT, resCitox, resSH] = await Promise.all([
+      this.procesarUEB(16, mes, anno, direccionesAica),
+      this.procesarUEB(25, mes, anno, direccionesLiorad),
+      this.procesarUEB(55, mes, anno, direccionesJT),
+      this.procesarUEB(100, mes, anno, direccionesCitox),
+      this.procesarUEB(57, mes, anno, direccionesSH), // ✅ Fix: usaba direccionesCitox antes
+    ]);
 
-    const totales: { [key: string]: { [key: string]: TotalResult } } = {};
-    let totalesInt: TotalInterruptosUEB | null = null;
+    const totales = {
+      AICA:   resAica.totales,
+      Liorad: resLiorad.totales,
+      JT:     resJT.totales,
+      CITOX:  resCitox.totales,
+      SH:     resSH.totales,
+    };
 
-    if (ueb === 0) {
-      // Obtener direcciones para cada UEB
-      const direccionesAica = await this.fetchDirecciones(16);
-      const direccionesLiorad = await this.fetchDirecciones(25);
-      const direccionesJT = await this.fetchDirecciones(55);
-      const direccionesCitox = await this.fetchDirecciones(100);
-      const direccionesSH = await this.fetchDirecciones(57);
-
-      // Procesar AICA (UEB=16)
-      const {
-        interruptos: aicaInterruptos,
-        totales: aicaTotales,
-        ...aicaTotals
-      } = await this.procesarUEB(16, mes, anno, direccionesAica);
-      interruptosAica = aicaInterruptos;
-      totales['AICA'] = aicaTotales;
-      ({ totalReub, totalCovid, totalProd25, totalProd48 } = aicaTotals);
-
-      // Procesar Liorad (UEB=25)
-      const {
-        interruptos: lioradInterruptos,
-        totales: lioradTotales,
-        ...lioradTotals
-      } = await this.procesarUEB(25, mes, anno, direccionesLiorad);
-      interruptosLiorad = lioradInterruptos;
-      totales['Liorad'] = lioradTotales;
-      ({ totalReub, totalCovid, totalProd25, totalProd48 } = lioradTotals);
-
-      // Procesar JT (UEB=55)
-      const {
-        interruptos: jtInterruptos,
-        totales: jtTotales,
-        ...jtTotals
-      } = await this.procesarUEB(55, mes, anno, direccionesJT);
-      interruptosJT = jtInterruptos;
-      totales['JT'] = jtTotales;
-      ({ totalReub, totalCovid, totalProd25, totalProd48 } = jtTotals);
-
-      // Procesar CITOX (UEB=100)
-      const {
-        interruptos: citoxInterruptos,
-        totales: citoxTotales,
-        ...citoxTotals
-      } = await this.procesarUEB(100, mes, anno, direccionesCitox);
-      interruptosCitox = citoxInterruptos;
-      totales['CITOX'] = citoxTotales;
-      ({ totalReub, totalCovid, totalProd25, totalProd48 } = citoxTotals);
-
-      // Procesar SH (UEB=57) - Nota: Usa direccionesCitox (posible error en original)
-      const {
-        interruptos: shInterruptos,
-        totales: shTotales,
-        ...shTotals
-      } = await this.procesarUEB(57, mes, anno, direccionesCitox);
-      interruptosSH = shInterruptos;
-      totales['SH'] = shTotales;
-      ({ totalReub, totalCovid, totalProd25, totalProd48 } = shTotals);
-      totalesInt = this.calcularTotalnterruptosUEB(totales);
-    } else {
-      const direcciones = await this.fetchDirecciones(ueb);
-      const { interruptos: uebInterruptos, ...uebTotals } =
-        await this.procesarUEB(ueb, mes, anno, direcciones);
-      interruptos = uebInterruptos;
-      ({ totalReub, totalCovid, totalProd25, totalProd48 } = uebTotals);
-    }
+    // ✅ Fix: antes se sobreescribían, ahora se acumulan correctamente
+    const totalReub  = this.sumarTotales([resAica.totalReub,  resLiorad.totalReub,  resJT.totalReub,  resCitox.totalReub,  resSH.totalReub]);
+    const totalCovid = this.sumarTotales([resAica.totalCovid, resLiorad.totalCovid, resJT.totalCovid, resCitox.totalCovid, resSH.totalCovid]);
+    const totalProd25 = this.sumarTotales([resAica.totalProd25, resLiorad.totalProd25, resJT.totalProd25, resCitox.totalProd25, resSH.totalProd25]);
+    const totalProd48 = this.sumarTotales([resAica.totalProd48, resLiorad.totalProd48, resJT.totalProd48, resCitox.totalProd48, resSH.totalProd48]);
 
     return {
-      interruptos,
-      interruptosAica,
-      interruptosLiorad,
-      interruptosJT,
-      interruptosCitox,
-      interruptosSH,
+      interruptos: null,
+      interruptosAica:   resAica.interruptos,
+      interruptosLiorad: resLiorad.interruptos,
+      interruptosJT:     resJT.interruptos,
+      interruptosCitox:  resCitox.interruptos,
+      interruptosSH:     resSH.interruptos,
       totalReub,
       totalCovid,
       totalProd25,
       totalProd48,
       totales,
-      totalesInt,
+      totalesInt: this.calcularTotalnterruptosUEB(totales),
+    };
+  } else {
+    const direcciones = await this.fetchDirecciones(ueb);
+    const res = await this.procesarUEB(ueb, mes, anno, direcciones);
+    return {
+      interruptos: res.interruptos,
+      interruptosAica: null,
+      interruptosLiorad: null,
+      interruptosJT: null,
+      interruptosCitox: null,
+      interruptosSH: null,
+      totalReub: res.totalReub,
+      totalCovid: res.totalCovid,
+      totalProd25: res.totalProd25,
+      totalProd48: res.totalProd48,
+      totales: {},
+      totalesInt: null,
     };
   }
+}
+
+// ✅ Nuevo helper: suma un array de TotalResult en uno solo
+private sumarTotales(totales: TotalResult[]): TotalResult {
+  return totales.reduce(
+    (acc, t) => ({
+      Total: acc.Total + (t?.Total ?? 0),
+      F: acc.F + (t?.F ?? 0),
+      M: acc.M + (t?.M ?? 0),
+    }),
+    { Total: 0, F: 0, M: 0 },
+  );
+}
 
   // ✅ Corregido: fetchDirecciones ahora filtra entradas sin áreas para evitar filas vacías en el reporte
   private async fetchDirecciones(ueb: number): Promise<any[]> {
