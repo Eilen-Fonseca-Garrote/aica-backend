@@ -1399,11 +1399,9 @@ private async fetchTrabajadoresFisicos(fecha: string): Promise<any[]> {
 }
 
  public async generateTrabajadoresFisicosExcel(fecha: string): Promise<Buffer> {
-  // ✅ try/catch añadido — antes los errores de ExcelJS escapaban sin mensaje
   try {
     const trabajadores = await this.fetchTrabajadoresFisicos(fecha);
 
-    // ✅ Guard explícito para lista vacía
     if (!trabajadores || trabajadores.length === 0) {
       throw new Error(
         `No se encontraron trabajadores físicos para la fecha ${fecha}.`,
@@ -1413,14 +1411,15 @@ private async fetchTrabajadoresFisicos(fecha: string): Promise<any[]> {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Trabajadores');
 
+    // Nueva estructura: fecha | Nombre y Apellidos | Número de Identidad | UEB | Dirección | Área | Clasificación
     worksheet.columns = [
-      { header: 'Identificación', key: 'id', width: 20 },
-      { header: 'Nombre', key: 'nombre', width: 25 },
-      { header: 'Apellido 1', key: 'apellido1', width: 20 },
-      { header: 'Apellido 2', key: 'apellido2', width: 20 },
-      { header: 'UEB', key: 'ueb', width: 20 },
-      { header: 'Área', key: 'area', width: 30 },
-      { header: 'Dirección', key: 'direccion', width: 30 },
+      { header: 'Fecha',                key: 'fecha',          width: 15 },
+      { header: 'Nombre y Apellidos',   key: 'nombreCompleto', width: 40 },
+      { header: 'Número de Identidad',  key: 'noIdentidad',    width: 22 },
+      { header: 'UEB',                  key: 'ueb',            width: 15 },
+      { header: 'Dirección',            key: 'direccion',      width: 35 },
+      { header: 'Área',                 key: 'area',           width: 35 },
+      { header: 'Clasificación',        key: 'clasificacion',  width: 20 },
     ];
 
     // Estilo encabezados
@@ -1441,15 +1440,24 @@ private async fetchTrabajadoresFisicos(fecha: string): Promise<any[]> {
     });
 
     trabajadores.forEach((trab) => {
+      // Construir "Nombre y Apellidos" concatenando nombre + apellidos disponibles
+      const partes = [
+        this.cleanValue(trab.TrbNom),
+        this.cleanValue(trab.TrbAp1),
+        this.cleanValue(trab.TrbAp2),
+      ].filter((p) => p && p !== '-');
+      const nombreCompleto = partes.join(' ') || '-';
+
       const row = worksheet.addRow({
-        id: this.cleanValue(trab.TrbNumIden),
-        nombre: this.cleanValue(trab.TrbNom),
-        apellido1: this.cleanValue(trab.TrbAp1),
-        apellido2: this.cleanValue(trab.TrbAp2),
-        ueb: this.cleanValue(trab.UEB),
-        area: this.cleanValue(trab.AREA),
-        direccion: this.cleanValue(trab.DIRECCION),
+        fecha,
+        nombreCompleto,
+        noIdentidad:   this.cleanValue(trab.TrbNumIden),
+        ueb:           this.cleanValue(trab.UEB),
+        direccion:     this.cleanValue(trab.DIRECCION),
+        area:          this.cleanValue(trab.AREA),
+        clasificacion: 'Sistema Bioadmin',
       });
+
       row.eachCell({ includeEmpty: true }, (cell) => {
         cell.border = {
           top: { style: 'thin' },
@@ -1467,11 +1475,9 @@ private async fetchTrabajadoresFisicos(fecha: string): Promise<any[]> {
       to: `G${worksheet.rowCount}`,
     };
 
-    // ✅ Tipado explícito — writeBuffer() devuelve ArrayBuffer, Buffer.from() lo normaliza
     const arrayBuffer = await workbook.xlsx.writeBuffer();
     return Buffer.from(arrayBuffer);
   } catch (error) {
-    // Re-lanza con mensaje limpio para que el controller lo capture correctamente
     throw new Error(error.message || 'Error generando el Excel de trabajadores físicos.');
   }
 }
@@ -1509,25 +1515,34 @@ public async generateTrabajadoresFisicosPdf(fecha: string): Promise<Buffer> {
   doc.line(14, 24, pageWidth - 14, 24);
 
   // ── Tabla ─────────────────────────────────────────────────────────────────
+  // Estructura: fecha | Nombre y Apellidos | Número de Identidad | UEB | Dirección | Área | Clasificación
   const headers = [
-    'Identificación',
-    'Nombre',
-    'Apellido 1',
-    'Apellido 2',
+    'Fecha',
+    'Nombre y Apellidos',
+    'Número de Identidad',
     'UEB',
-    'Área',
     'Dirección',
+    'Área',
+    'Clasificación',
   ];
 
-  const rows = trabajadores.map((t) => [
-    this.cleanValue(t.TrbNumIden),
-    this.cleanValue(t.TrbNom),
-    this.cleanValue(t.TrbAp1),
-    this.cleanValue(t.TrbAp2),
-    this.cleanValue(t.UEB),
-    this.cleanValue(t.AREA),
-    this.cleanValue(t.DIRECCION),
-  ]);
+  const rows = trabajadores.map((t) => {
+    const partes = [
+      this.cleanValue(t.TrbNom),
+      this.cleanValue(t.TrbAp1),
+      this.cleanValue(t.TrbAp2),
+    ].filter((p) => p && p !== '-');
+    const nombreCompleto = partes.join(' ') || '-';
+    return [
+      fecha,
+      nombreCompleto,
+      this.cleanValue(t.TrbNumIden),
+      this.cleanValue(t.UEB),
+      this.cleanValue(t.DIRECCION),
+      this.cleanValue(t.AREA),
+      'Sistema Bioadmin',
+    ];
+  });
 
   (doc as any).autoTable({
     startY: 28,
@@ -1542,7 +1557,7 @@ public async generateTrabajadoresFisicosPdf(fecha: string): Promise<Buffer> {
       valign: 'middle',
     },
     headStyles: {
-      fillColor: [101, 177, 196], // mismo color que el Excel del proyecto
+      fillColor: [101, 177, 196],
       textColor: 255,
       fontStyle: 'bold',
       halign: 'center',
@@ -1551,13 +1566,13 @@ public async generateTrabajadoresFisicosPdf(fecha: string): Promise<Buffer> {
       fillColor: [245, 245, 245],
     },
     columnStyles: {
-      0: { cellWidth: 32, halign: 'center' }, // Identificación
-      1: { cellWidth: 38 },                   // Nombre
-      2: { cellWidth: 32 },                   // Apellido 1
-      3: { cellWidth: 32 },                   // Apellido 2
-      4: { cellWidth: 22, halign: 'center' }, // UEB
-      5: { cellWidth: 55 },                   // Área
-      6: { cellWidth: 'auto' },               // Dirección — toma el espacio restante
+      0: { cellWidth: 22, halign: 'center' }, // Fecha
+      1: { cellWidth: 55 },                   // Nombre y Apellidos
+      2: { cellWidth: 32, halign: 'center' }, // Número de Identidad
+      3: { cellWidth: 18, halign: 'center' }, // UEB
+      4: { cellWidth: 'auto' },               // Dirección — toma el espacio restante
+      5: { cellWidth: 50 },                   // Área
+      6: { cellWidth: 30, halign: 'center' }, // Clasificación
     },
     didDrawPage: (data: any) => {
       // Encabezado en páginas de continuación
