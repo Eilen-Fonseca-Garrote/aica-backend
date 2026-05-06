@@ -114,7 +114,7 @@ export class ExportService {
         { header: 'Talla Zapato', key: 'tallaZapato', width: 20 },
         // Añadir al final del array worksheet.columns, después de tallaZapato:
         { header: 'Fecha Alta', key: 'fechaAlta', width: 22 },
-        { header: 'Fecha Baja', key: 'fechaBaja', width: 22 }, //comprobar si está
+        { header: 'Años Antiguedad', key: 'antiguedad', width: 22 }, //comprobar si está
       ];
 
       // Estilo para encabezados
@@ -215,7 +215,7 @@ export class ExportService {
           tallaZapato: formatValue(trabajador['Talla_Zapato']),
           // Añadir al final del objeto dentro de worksheet.addRow, después de tallaZapato:
           fechaAlta: formatDate(trabajador['Alta Empresa'] ?? trabajador['AsgFecAlta']),
-          fechaBaja: formatDate(trabajador['AsgFecBaja'] ?? trabajador['Fecha Baja']),
+          antiguedad: formatDate(trabajador['Años_antiguedad']),
         });
 
         row.eachCell({ includeEmpty: true }, (cell) => {
@@ -1647,7 +1647,7 @@ public async generateAllWorkersPdf(): Promise<Buffer> {
   headers: [
     'Nombre y Apellidos', 'UEB', 'Unidad', 'Área', 'Cargo',
     'Cat. Ocupacional', 'Grupo Escala', 'Salario',
-    'Cód. Marcaje', 'Exp. Laboral', 'Fecha Alta', 'Fecha Baja',
+    'Cód. Marcaje', 'Exp. Laboral', 'Fecha Alta', 'Años Antiguedad',
   ],
   extractor: (t: any) => {
     const formatDate = (value: any): string => {
@@ -1670,7 +1670,7 @@ public async generateAllWorkersPdf(): Promise<Buffer> {
       formatValue(t['Código Tarjeta Marcaje']),
       formatValue(t.Exp_Lab),
       formatDate(t['Alta Empresa'] ?? t['AsgFecAlta']),
-      formatDate(t['AsgFecBaja'] ?? t['Fecha Baja']),
+      formatDate(t['Años_antiguedad']),
     ];
   },
 },
