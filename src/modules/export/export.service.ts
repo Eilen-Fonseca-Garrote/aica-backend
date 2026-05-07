@@ -215,7 +215,7 @@ export class ExportService {
           tallaZapato: formatValue(trabajador['Talla_Zapato']),
           // Añadir al final del objeto dentro de worksheet.addRow, después de tallaZapato:
           fechaAlta: formatDate(trabajador['Alta Empresa'] ?? trabajador['AsgFecAlta']),
-          antiguedad: formatDate(trabajador['Años_antiguedad']),
+          antiguedad: formatValue(trabajador['Años_antiguedad']),
         });
 
         row.eachCell({ includeEmpty: true }, (cell) => {
@@ -1670,7 +1670,7 @@ public async generateAllWorkersPdf(): Promise<Buffer> {
       formatValue(t['Código Tarjeta Marcaje']),
       formatValue(t.Exp_Lab),
       formatDate(t['Alta Empresa'] ?? t['AsgFecAlta']),
-      formatDate(t['Años_antiguedad']),
+      formatValue(t['Años_antiguedad']),
     ];
   },
 },
