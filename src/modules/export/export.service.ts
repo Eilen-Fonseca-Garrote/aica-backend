@@ -215,7 +215,21 @@ export class ExportService {
           tallaZapato: formatValue(trabajador['Talla_Zapato']),
           // Añadir al final del objeto dentro de worksheet.addRow, después de tallaZapato:
           fechaAlta: formatDate(trabajador['Alta Empresa'] ?? trabajador['AsgFecAlta']),
-          anosAntiguedad: formatValue(trabajador['Años_Antiguedad']),
+          
+          // Calcular años de antigüedad con lógica de fallback a partir de fecha de alta:
+          anosAntiguedad: (() => {
+  // Primero intentar el campo directo
+  const raw = trabajador['Años_antiguedad'] ?? trabajador['Años_Antiguedad'];
+  if (raw !== undefined && raw !== null) return formatValue(raw);
+  
+  // Fallback: calcular desde fecha de alta
+  const fechaAlta = trabajador['Alta Empresa'] ?? trabajador['AsgFecAlta'];
+  if (!fechaAlta) return '-';
+  const alta = new Date(fechaAlta);
+  if (isNaN(alta.getTime())) return '-';
+  const anos = new Date().getFullYear() - alta.getFullYear();
+  return String(anos);
+})(),
         });
 
         row.eachCell({ includeEmpty: true }, (cell) => {
