@@ -114,7 +114,7 @@ export class ExportService {
         { header: 'Talla Zapato', key: 'tallaZapato', width: 20 },
         // Añadir al final del array worksheet.columns, después de tallaZapato:
         { header: 'Fecha Alta', key: 'fechaAlta', width: 22 },
-        { header: 'Años Antiguedad', key: 'años_antiguedad', width: 22 }, //comprobar cómo está que sale -
+        { header: 'Años de Antigüedad', key: 'anosAntiguedad', width: 20 },
       ];
 
       // Estilo para encabezados
@@ -215,7 +215,7 @@ export class ExportService {
           tallaZapato: formatValue(trabajador['Talla_Zapato']),
           // Añadir al final del objeto dentro de worksheet.addRow, después de tallaZapato:
           fechaAlta: formatDate(trabajador['Alta Empresa'] ?? trabajador['AsgFecAlta']),
-          años_antiguedad: formatValue(trabajador.Años_antiguedad),
+          anosAntiguedad: formatValue(trabajador.Años_antiguedad),
         });
 
         row.eachCell({ includeEmpty: true }, (cell) => {
