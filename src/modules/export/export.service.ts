@@ -218,17 +218,19 @@ export class ExportService {
           
           // Calcular años de antigüedad con lógica de fallback a partir de fecha de alta:
           anosAntiguedad: (() => {
-  // Primero intentar el campo directo
   const raw = trabajador['Años_antiguedad'] ?? trabajador['Años_Antiguedad'];
   if (raw !== undefined && raw !== null) return formatValue(raw);
-  
-  // Fallback: calcular desde fecha de alta
   const fechaAlta = trabajador['Alta Empresa'] ?? trabajador['AsgFecAlta'];
   if (!fechaAlta) return '-';
   const alta = new Date(fechaAlta);
   if (isNaN(alta.getTime())) return '-';
-  const anos = new Date().getFullYear() - alta.getFullYear();
-  return String(anos);
+  const hoy = new Date();
+  let anos = hoy.getFullYear() - alta.getFullYear();
+  const yaFelizCumple =
+    hoy.getMonth() > alta.getMonth() ||
+    (hoy.getMonth() === alta.getMonth() && hoy.getDate() >= alta.getDate());
+  if (!yaFelizCumple) anos--;
+  return String(Math.max(0, anos));
 })(),
         });
 
