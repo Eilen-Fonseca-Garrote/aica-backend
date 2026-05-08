@@ -215,7 +215,7 @@ export class ExportService {
           tallaZapato: formatValue(trabajador['Talla_Zapato']),
           // Añadir al final del objeto dentro de worksheet.addRow, después de tallaZapato:
           fechaAlta: formatDate(trabajador['Alta Empresa'] ?? trabajador['AsgFecAlta']),
-          anosAntiguedad: formatValue(trabajador['Años_antiguedad']),
+          anosAntiguedad: formatValue(trabajador['Años_Antiguedad']),
         });
 
         row.eachCell({ includeEmpty: true }, (cell) => {
