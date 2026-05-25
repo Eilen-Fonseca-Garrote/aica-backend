@@ -572,7 +572,8 @@ export class ListarTrabajadoresService {
       }
 
       if (this.hasText(filters.nescolar)) {
-        const workerNivelEscolar = this.getWorkerValue(worker, ['NivEscDesc']);
+        console.log(worker);
+        const workerNivelEscolar = this.getWorkerValue(worker, ['NIVEL ESCOLAR']);
         if (!this.equals(workerNivelEscolar, filters.nescolar as string)) {
           return false;
         }
