@@ -20,6 +20,12 @@ services:
             - NODE_ENV=$NODE_ENV
             - LDAP_LOGIN_SERVICE=$LDAP_LOGIN_SERVICE
             - SWAGGER_URL=$SWAGGER_URL
+            - MINIO_URL=$MINIO_URL
+            - MINIO_PORT=$MINIO_PORT
+            - MINIO_ACCESS_KEY=$MINIO_ACCESS_KEY
+            - MINIO_SECRET_KEY=$MINIO_SECRET_KEY
+            - MINIO_BUCKET=$MINIO_BUCKET
+            - MINIO_USE_SSL=$MINIO_USE_SSL
         volumes:
             - /etc/timezone:/etc/timezone:ro
             - /etc/localtime:/etc/localtime:ro

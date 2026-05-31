@@ -8,6 +8,8 @@ import { BuscarTrabajadorModule } from './modules/buscarTranajador/buscarTrabaja
 import { CalcularPromedioModule } from './modules/calcularPromedio/calcularPromedio.module';
 import { AusenciasModule } from './modules/ausencias/ausencias.module';
 import { ListarTrabajadoresModule } from './modules/listarTrabajadores/listarTrabajadores.module';
+import { ConfigurationModule } from './modules/configuration/configuration.module';
+import { SystemInterfaceEntity } from './modules/configuration/system-interface/entities/system-interface.entity';
 
 @Module({
   imports: [
@@ -28,7 +30,7 @@ import { ListarTrabajadoresModule } from './modules/listarTrabajadores/listarTra
         synchronize: configService.get<boolean>('SYNCHRO'),
         autoLoadEntities: false,
         extra: { connectionLimit: 10 },
-        entities: [],
+        entities: [SystemInterfaceEntity],
       }),
       inject: [ConfigService],
       
@@ -38,7 +40,9 @@ import { ListarTrabajadoresModule } from './modules/listarTrabajadores/listarTra
     CalcularPromedioModule,
     AusenciasModule,
     ListarTrabajadoresModule,
+    ConfigurationModule,
   ],
   
 })
 export class AppModule {}
+
