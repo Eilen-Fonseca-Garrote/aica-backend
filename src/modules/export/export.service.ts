@@ -1370,47 +1370,62 @@ public async getInterruptosTestPDF(): Promise<Buffer> {
 }
 
 private async fetchTrabajadoresFisicos(fecha: string): Promise<any[]> {
+  this.getBaseUri();
+
+  if (!this.baseUri) {
+    throw new InternalServerErrorException('SIGERH_BASE_PATH no está configurado.');
+  }
+
+  const [year, month, day] = fecha.split('-');
+  const fechaSigerh = `${day}-${month}-${year}`;
+  const url = `${this.baseUri}/trabFisicoSigerh`;
+
+  this.logger.log(`[trabFisicoSigerh] URL: ${url} | fecha: ${fechaSigerh}`);
+
+  const start = Date.now(); // ✅ Medir tiempo real de respuesta
+
   try {
-    this.getBaseUri();
-
-    if (!this.baseUri) {
-      throw new Error('SIGERH_BASE_PATH no está configurado.');
-    }
-
-    // ✅ Convertir YYYY-MM-DD → DD-MM-YYYY
-    // El SQL interno usa CONVERT(nvarchar, fecha, 105) que es formato DD-MM-YYYY
-    const [year, month, day] = fecha.split('-');
-    const fechaSigerh = `${day}-${month}-${year}`;
-
-    // ✅ La URL correcta NO lleva /recursosHumanos — el contexto del flujo es vacío ("-")
-    // según la documentación: Contexto: - / Servicio: /trabFisicoSigerh
-    const url = `${this.baseUri}/trabFisicoSigerh`;
-
-    this.logger.log(`[trabFisicoSigerh] URL: ${url} | fecha: ${fechaSigerh}`);
-
     const response = await axios.get(url, {
       params: { fecha: fechaSigerh },
-      timeout: 15000,
+      // ✅ Aumentado de 15s a 60s — la consulta golpea 5 BDs en paralelo
+      // con un WHERE no optimizable (CONVERT sobre la columna de fecha)
+      timeout: 60000,
     });
+
+    const elapsed = Date.now() - start;
+    this.logger.log(`[trabFisicoSigerh] Respondió en ${elapsed}ms`);
 
     const data = response.data;
 
-    if (Array.isArray(data)) {
-      return data;
-    }
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.Trabajadores)) return data.Trabajadores;
 
-    if (data && Array.isArray(data.Trabajadores)) {
-      return data.Trabajadores;
-    }
-
-    this.logger.warn(`Respuesta inesperada de trabFisicoSigerh: ${JSON.stringify(data).slice(0, 300)}`);
+    this.logger.warn(`[trabFisicoSigerh] Estructura inesperada: ${JSON.stringify(data).slice(0, 300)}`);
     return [];
 
   } catch (error) {
-    this.logger.error(`[trabFisicoSigerh] Error: ${error.message}`);
-    throw new InternalServerErrorException(
-      error.message || `Error al obtener los trabajadores físicos para la fecha ${fecha}`,
-    );
+    const elapsed = Date.now() - start;
+
+    if (error.code === 'ECONNABORTED') {
+      this.logger.error(`[trabFisicoSigerh] Timeout tras ${elapsed}ms para fecha ${fechaSigerh}`);
+      throw new InternalServerErrorException(
+        'La consulta a SIGERH (Trabajadores Físicos) está tardando demasiado. ' +
+        'Esta consulta revisa 5 bases de datos distintas y puede tardar más de lo normal. Intente nuevamente.',
+      );
+    } else if (error.response) {
+      this.logger.error(`[trabFisicoSigerh] SIGERH respondió ${error.response.status}: ${JSON.stringify(error.response.data).slice(0, 300)}`);
+      throw new InternalServerErrorException(
+        `SIGERH devolvió un error (${error.response.status}) al consultar trabFisicoSigerh.`,
+      );
+    } else if (error.request) {
+      this.logger.error(`[trabFisicoSigerh] No se pudo conectar a SIGERH: ${error.message}`);
+      throw new InternalServerErrorException('No se pudo establecer conexión con SIGERH.');
+    } else {
+      this.logger.error(`[trabFisicoSigerh] Error inesperado: ${error.message}`);
+      throw new InternalServerErrorException(
+        `Error al obtener los trabajadores físicos para la fecha ${fecha}: ${error.message}`,
+      );
+    }
   }
 }
 
