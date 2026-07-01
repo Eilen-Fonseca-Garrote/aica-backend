@@ -42,11 +42,6 @@ export class ExportService {
     this.utils.setBaseUri(this.baseUri);
   }
  
- /*async generateAllWorkersPdf(): Promise<Buffer> {
-    // Implementation for generating PDF file
-    const pdfBuffer = Buffer.from('PDF content here'); // Replace with actual PDF generation logic
-    return pdfBuffer;
-  } */
 
   private async getWorkers(baseUri: string): Promise<any[]> {
     try {
@@ -58,7 +53,7 @@ export class ExportService {
     }
   }
 
-  // aqui añadirle fecha de alta y baja
+  // aqui añadi categoria cientifica
   public async generateAllWorkersExcel() {
     try {
       const trabajadores = await this.getWorkers(this.baseUri);
@@ -114,7 +109,9 @@ export class ExportService {
         { header: 'Talla Zapato', key: 'tallaZapato', width: 20 },
         // Añadir al final del array worksheet.columns, después de tallaZapato:
         { header: 'Fecha Alta', key: 'fechaAlta', width: 22 },
+        { header: 'Categoría Científica', key: 'catcientific', width: 20 },
         { header: 'Años de Antigüedad', key: 'anosAntiguedad', width: 20 },
+       
       ];
 
       // Estilo para encabezados
@@ -215,6 +212,7 @@ export class ExportService {
           tallaZapato: formatValue(trabajador['Talla_Zapato']),
           // Añadir al final del objeto dentro de worksheet.addRow, después de tallaZapato:
           fechaAlta: formatDate(trabajador['Alta Empresa'] ?? trabajador['AsgFecAlta']),
+          catcientific: formatValue(trabajador['Categoría Científica']),
           
           // Calcular años de antigüedad con lógica de fallback a partir de fecha de alta:
           anosAntiguedad: (() => {
@@ -256,7 +254,7 @@ export class ExportService {
       // Auto filtro
       worksheet.autoFilter = {
         from: 'A1',
-        to: `AO${worksheet.rowCount}`,//En caso de añadirse o eliminarse columnas, modificar el valor 'AM'
+        to: `AP${worksheet.rowCount}`,//En caso de añadirse o eliminarse columnas, modificar el valor 'AM'
       };
 
       const buffer = await workbook.xlsx.writeBuffer();
@@ -1112,6 +1110,11 @@ export class ExportService {
       body: rows,
       theme: 'grid',
       styles: { fontSize: 10 },
+      headStyles: {
+        fillColor: [69, 69, 69], // #454545
+        textColor: 255,
+        fontStyle: 'bold',
+      },
     });
 
     y = (doc as any).autoTable.previous.finalY + 5;
@@ -1146,6 +1149,10 @@ export class ExportService {
       body: totals,
       theme: 'grid',
       styles: { fontSize: 10, fontStyle: 'bold' },
+      bodyStyles: {
+        fillColor: [69, 69, 69], // #454545
+        textColor: 255,
+      },
     });
 
     return (doc as any).autoTable.previous.finalY + 10;
@@ -1184,6 +1191,11 @@ export class ExportService {
       body: rows,
       theme: 'grid',
       styles: { fontSize: 10 },
+      headStyles: {
+        fillColor: [69, 69, 69], // #454545
+        textColor: 255,
+        fontStyle: 'bold',
+      },
     });
 
     y = (doc as any).autoTable.previous.finalY + 5;
@@ -1218,6 +1230,10 @@ export class ExportService {
       body: totalsRows,
       theme: 'grid',
       styles: { fontSize: 10, fontStyle: 'bold' },
+      bodyStyles: {
+        fillColor: [69, 69, 69], // #454545
+        textColor: 255,
+      },
     });
 
     return (doc as any).autoTable.previous.finalY + 15;
@@ -1262,6 +1278,10 @@ export class ExportService {
       body: totals,
       theme: 'grid',
       styles: { fontSize: 10, fontStyle: 'bold' },
+      headStyles: {
+        fillColor: [69, 69, 69], // #454545
+        textColor: 255,
+      },
     });
   }
 
@@ -1329,7 +1349,7 @@ export class ExportService {
       valign: 'middle',
     },
     headStyles: {
-      fillColor: [41, 128, 185],
+      fillColor: [69, 69, 69], // #454545
       textColor: 255,
       fontStyle: 'bold',
     },
